@@ -1,5 +1,6 @@
 #include <postgres.h>
 
+#include <access/parallel.h>
 //#include <access/printtup.h>
 #include <access/xact.h>
 //#include <catalog/heap.h>
@@ -18,8 +19,8 @@
 //#include <jit/jit.h>
 #include <libpq-fe.h>
 #include <libpq/libpq-be.h>
-#include <libpq/pqformat.h>
 #include <libpq/libpq.h>
+#include <libpq/pqformat.h>
 //#include <miscadmin.h>
 //#include <nodes/makefuncs.h>
 //#include <parser/analyze.h>
@@ -188,6 +189,7 @@ static void pg_queue_kill(void) {
 EXTENSION(pg_queue_notify) {
     text *channel = PG_ARGISNULL(0) ? NULL : DatumGetTextP(PG_GETARG_DATUM(0));
     text *payload = PG_ARGISNULL(1) ? NULL : DatumGetTextP(PG_GETARG_DATUM(1));
+    if (IsParallelWorker()) elog(ERROR, "cannot send notifications from a parallel worker");
     SpinLockAcquire(&pg_queue_shmem->mutex);
     if (channel) memcpy(pg_queue_shmem->channel, VARDATA_ANY(channel), Min(NAMEDATALEN - 1, VARSIZE_ANY_EXHDR(channel)));
     pg_queue_shmem->channel[channel ? Min(NAMEDATALEN - 1, VARSIZE_ANY_EXHDR(channel)) : sizeof("") - 1] = '\0';
