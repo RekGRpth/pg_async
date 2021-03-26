@@ -151,9 +151,9 @@ EXTENSION(pg_queue_listen) {
 static void pg_queue_kill(void) {
     int num_backends = pgstat_fetch_stat_numbackends();
     for (int curr_backend = 1; curr_backend <= num_backends; curr_backend++) {
-        LocalPgBackendStatus *local_beentry;
-        if (!(local_beentry = pgstat_fetch_stat_local_beentry(curr_backend))) continue;
-        if (kill(local_beentry->backendStatus.st_procpid, SIGUSR1)) W("kill");
+        PgBackendStatus *beentry;
+        if (!(beentry = pgstat_fetch_stat_beentry(curr_backend))) continue;
+        if (kill(beentry->st_procpid, SIGUSR1)) W("kill");
     }
 }
 
