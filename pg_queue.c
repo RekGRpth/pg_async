@@ -97,7 +97,6 @@ static void pg_queue_signal(SIGNAL_ARGS) {
 
 void _PG_init(void); void _PG_init(void) {
     D1("hi");
-    pg_queue_signal_original = pqsignal(SIGUSR1, pg_queue_signal);
     DefineCustomIntVariable("pg_queue.size", "pg_queue size", NULL, &pg_queue_size, 1024, 1, INT_MAX, PGC_SIGHUP, 0, NULL, NULL, NULL);
 }
 
@@ -111,5 +110,6 @@ EXTENSION(pg_queue_notify) {
     const char *channel = PG_ARGISNULL(0) ? "" : text_to_cstring(PG_GETARG_TEXT_PP(0));
     const char *payload = PG_ARGISNULL(1) ? "" : text_to_cstring(PG_GETARG_TEXT_PP(1));
     D1("channel = %s, payload = %s", channel, payload);
+    if (!pg_queue_signal_original) pg_queue_signal_original = pqsignal(SIGUSR1, pg_queue_signal);
     PG_RETURN_VOID();
 }
