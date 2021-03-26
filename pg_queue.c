@@ -141,8 +141,11 @@ static void pg_queue_signal(SIGNAL_ARGS) {
 }
 
 EXTENSION(pg_queue_listen) {
-    const char *channel = PG_ARGISNULL(0) ? "" : text_to_cstring(PG_GETARG_TEXT_PP(0));
-    D1("channel = %s", channel);
+    text *channel = PG_ARGISNULL(0) ? NULL : DatumGetTextP(PG_GETARG_DATUM(0));
+    SpinLockAcquire(&pg_queue_shmem->mutex);
+    if (channel) memcpy(pg_queue_shmem->channel, VARDATA_ANY(channel), Min(NAMEDATALEN - 1, VARSIZE_ANY_EXHDR(channel)));
+    pg_queue_shmem->channel[channel ? Min(NAMEDATALEN - 1, VARSIZE_ANY_EXHDR(channel)) : sizeof("") - 1] = '\0';
+    SpinLockRelease(&pg_queue_shmem->mutex);
     if (!pg_queue_signal_original) pg_queue_signal_original = pqsignal(SIGUSR1, pg_queue_signal);
     PG_RETURN_VOID();
 }
@@ -157,15 +160,17 @@ static void pg_queue_kill(void) {
 }
 
 EXTENSION(pg_queue_notify) {
-    text *channel = PG_ARGISNULL(0) ? NULL : DatumGetTextP(PG_GETARG_DATUM(0));
+    char *channel = PG_ARGISNULL(0) ? "" : text_to_cstring(PG_GETARG_TEXT_PP(0));
     text *payload = PG_ARGISNULL(1) ? NULL : DatumGetTextP(PG_GETARG_DATUM(1));
+    bool kill = false;
     SpinLockAcquire(&pg_queue_shmem->mutex);
-    memcpy(pg_queue_shmem->channel, VARDATA_ANY(channel), Min(NAMEDATALEN - 1, VARSIZE_ANY_EXHDR(channel)));
-    pg_queue_shmem->channel[Min(NAMEDATALEN - 1, VARSIZE_ANY_EXHDR(channel))] = '\0';
-    memcpy(pg_queue_shmem->payload, VARDATA_ANY(payload), Min(NOTIFY_PAYLOAD_MAX_LENGTH - 1, VARSIZE_ANY_EXHDR(payload)));
-    pg_queue_shmem->payload[Min(NOTIFY_PAYLOAD_MAX_LENGTH - 1, VARSIZE_ANY_EXHDR(payload))] = '\0';
-    pg_queue_shmem->pid = MyProcPid;
+    if (!strcmp(channel, pg_queue_shmem->channel)) {
+        if (payload) memcpy(pg_queue_shmem->payload, VARDATA_ANY(payload), Min(NOTIFY_PAYLOAD_MAX_LENGTH - 1, VARSIZE_ANY_EXHDR(payload)));
+        pg_queue_shmem->payload[payload ? Min(NOTIFY_PAYLOAD_MAX_LENGTH - 1, VARSIZE_ANY_EXHDR(payload)) : sizeof("") - 1] = '\0';
+        pg_queue_shmem->pid = MyProcPid;
+        kill = true;
+    }
     SpinLockRelease(&pg_queue_shmem->mutex);
-    pg_queue_kill();
+    if (kill) pg_queue_kill();
     PG_RETURN_VOID();
 }
