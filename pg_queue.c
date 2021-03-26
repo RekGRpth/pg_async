@@ -94,6 +94,7 @@ typedef struct pg_queue_shmem_t {
 } pg_queue_shmem_t;
 
 static int pg_queue_size;
+static List *pg_queue_channel = NIL;
 static pg_queue_shmem_t *pg_queue_shmem;
 static pqsigfunc pg_queue_signal_original = NULL;
 static shmem_startup_hook_type pg_queue_shmem_startup_hook_original = NULL;
@@ -123,31 +124,50 @@ void _PG_init(void); void _PG_init(void) {
     RequestAddinShmemSpace(MAXALIGN(sizeof(*pg_queue_shmem)));
 }
 
+static bool pg_queue_channel_exists(const char *channel) {
+    ListCell *p;
+    foreach(p, pg_queue_channel) if (!strcmp((char *)lfirst(p), channel)) return true;
+    return false;
+}
+
 static void pg_queue_signal(SIGNAL_ARGS) {
-    char *channel;
-    char *payload;
-    int32 pid;
-    SpinLockAcquire(&pg_queue_shmem->mutex);
-    channel = pstrdup(pg_queue_shmem->channel);
-    payload = pstrdup(pg_queue_shmem->payload);
-    pid = pg_queue_shmem->pid;
-    SpinLockRelease(&pg_queue_shmem->mutex);
-    D1("channel = %s, payload = %s, pid = %i", channel, payload, pid);
-    NotifyMyFrontEnd(channel, payload, pid);
-    pq_flush();
+    if (pg_queue_channel != NIL) {
+        char *channel;
+        char *payload;
+        int32 pid;
+        SpinLockAcquire(&pg_queue_shmem->mutex);
+        channel = pstrdup(pg_queue_shmem->channel);
+        payload = pstrdup(pg_queue_shmem->payload);
+        pid = pg_queue_shmem->pid;
+        SpinLockRelease(&pg_queue_shmem->mutex);
+        if (pg_queue_channel_exists(channel)) {
+            D1("channel = %s, payload = %s, pid = %i", channel, payload, pid);
+            NotifyMyFrontEnd(channel, payload, pid);
+            pq_flush();
+        }
+        pfree(channel);
+        pfree(payload);
+    }
     pg_queue_signal_original(postgres_signal_arg);
-    pfree(channel);
-    pfree(payload);
 }
 
 EXTENSION(pg_queue_listen) {
-    text *channel = PG_ARGISNULL(0) ? NULL : DatumGetTextP(PG_GETARG_DATUM(0));
-    SpinLockAcquire(&pg_queue_shmem->mutex);
-    if (channel) memcpy(pg_queue_shmem->channel, VARDATA_ANY(channel), Min(NAMEDATALEN - 1, VARSIZE_ANY_EXHDR(channel)));
-    pg_queue_shmem->channel[channel ? Min(NAMEDATALEN - 1, VARSIZE_ANY_EXHDR(channel)) : sizeof("") - 1] = '\0';
-    SpinLockRelease(&pg_queue_shmem->mutex);
-    if (!pg_queue_signal_original) pg_queue_signal_original = pqsignal(SIGUSR1, pg_queue_signal);
+    const char *channel = PG_ARGISNULL(0) ? "" : text_to_cstring(PG_GETARG_TEXT_PP(0));
+    if (!pg_queue_channel_exists(channel)) {
+        MemoryContext oldcontext = MemoryContextSwitchTo(TopMemoryContext);
+        pg_queue_channel = lappend(pg_queue_channel, pstrdup(channel));
+        MemoryContextSwitchTo(oldcontext);
+        if (!pg_queue_signal_original) pg_queue_signal_original = pqsignal(SIGUSR1, pg_queue_signal);
+    }
     PG_RETURN_VOID();
+}
+
+EXTENSION(pg_queue_listening_channels) {
+    FuncCallContext *funcctx;
+    if (SRF_IS_FIRSTCALL()) funcctx = SRF_FIRSTCALL_INIT();
+    funcctx = SRF_PERCALL_SETUP();
+    if (funcctx->call_cntr < list_length(pg_queue_channel)) SRF_RETURN_NEXT(funcctx, CStringGetTextDatum((char *)list_nth(pg_queue_channel, funcctx->call_cntr)));
+    SRF_RETURN_DONE(funcctx);
 }
 
 static void pg_queue_kill(void) {
@@ -160,32 +180,43 @@ static void pg_queue_kill(void) {
 }
 
 EXTENSION(pg_queue_notify) {
-    char *channel = PG_ARGISNULL(0) ? "" : text_to_cstring(PG_GETARG_TEXT_PP(0));
+    text *channel = PG_ARGISNULL(0) ? NULL : DatumGetTextP(PG_GETARG_DATUM(0));
     text *payload = PG_ARGISNULL(1) ? NULL : DatumGetTextP(PG_GETARG_DATUM(1));
-    bool found = false;
     SpinLockAcquire(&pg_queue_shmem->mutex);
-    if (!strcmp(channel, pg_queue_shmem->channel)) {
-        if (payload) memcpy(pg_queue_shmem->payload, VARDATA_ANY(payload), Min(NOTIFY_PAYLOAD_MAX_LENGTH - 1, VARSIZE_ANY_EXHDR(payload)));
-        pg_queue_shmem->payload[payload ? Min(NOTIFY_PAYLOAD_MAX_LENGTH - 1, VARSIZE_ANY_EXHDR(payload)) : sizeof("") - 1] = '\0';
-        pg_queue_shmem->pid = MyProcPid;
-        found = true;
-    }
+    if (channel) memcpy(pg_queue_shmem->channel, VARDATA_ANY(channel), Min(NAMEDATALEN - 1, VARSIZE_ANY_EXHDR(channel)));
+    pg_queue_shmem->channel[channel ? Min(NAMEDATALEN - 1, VARSIZE_ANY_EXHDR(channel)) : sizeof("") - 1] = '\0';
+    if (payload) memcpy(pg_queue_shmem->payload, VARDATA_ANY(payload), Min(NOTIFY_PAYLOAD_MAX_LENGTH - 1, VARSIZE_ANY_EXHDR(payload)));
+    pg_queue_shmem->payload[payload ? Min(NOTIFY_PAYLOAD_MAX_LENGTH - 1, VARSIZE_ANY_EXHDR(payload)) : sizeof("") - 1] = '\0';
+    pg_queue_shmem->pid = MyProcPid;
     SpinLockRelease(&pg_queue_shmem->mutex);
-    if (found) pg_queue_kill();
+    pg_queue_kill();
+    PG_RETURN_VOID();
+}
+
+EXTENSION(pg_queue_unlisten_all) {
+    list_free_deep(pg_queue_channel);
+    pg_queue_channel = NIL;
+    if (pg_queue_signal_original) {
+        pqsignal(SIGUSR1, pg_queue_signal_original);
+        pg_queue_signal_original = NULL;
+    }
     PG_RETURN_VOID();
 }
 
 EXTENSION(pg_queue_unlisten) {
-    if (pg_queue_signal_original) {
-        char *channel = PG_ARGISNULL(0) ? "" : text_to_cstring(PG_GETARG_TEXT_PP(0));
-        bool found = false;
-        SpinLockAcquire(&pg_queue_shmem->mutex);
-        if (!strcmp(channel, pg_queue_shmem->channel)) found = true;
-        SpinLockRelease(&pg_queue_shmem->mutex);
-        if (found) {
-            pqsignal(SIGUSR1, pg_queue_signal_original);
-            pg_queue_signal_original = NULL;
+    const char *channel = PG_ARGISNULL(0) ? "" : text_to_cstring(PG_GETARG_TEXT_PP(0));
+    ListCell *q;
+    foreach(q, pg_queue_channel) {
+        char *lchan = (char *)lfirst(q);
+        if (!strcmp(lchan, channel)) {
+            pg_queue_channel = foreach_delete_current(pg_queue_channel, q);
+            pfree(lchan);
+            break;
         }
+    }
+    if (!list_length(pg_queue_channel) && pg_queue_signal_original) {
+        pqsignal(SIGUSR1, pg_queue_signal_original);
+        pg_queue_signal_original = NULL;
     }
     PG_RETURN_VOID();
 }
