@@ -117,7 +117,7 @@ void _PG_fini(void); void _PG_fini(void) {
 
 void _PG_init(void); void _PG_init(void) {
     if (!process_shared_preload_libraries_in_progress) return;
-    D1("hi");
+    D1("NAMEDATALEN = %i, NOTIFY_PAYLOAD_MAX_LENGTH = %i", NAMEDATALEN, NOTIFY_PAYLOAD_MAX_LENGTH);
     DefineCustomIntVariable("pg_queue.size", "pg_queue size", NULL, &pg_queue_size, 1024, 1, INT_MAX, PGC_SIGHUP, 0, NULL, NULL, NULL);
     pg_queue_shmem_startup_hook_original = shmem_startup_hook;
     shmem_startup_hook = pg_queue_shmem_startup_hook;
