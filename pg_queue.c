@@ -148,6 +148,17 @@ EXTENSION(pg_queue_listen) {
     PG_RETURN_VOID();
 }
 
+static void pg_queue_kill(void) {
+    int num_backends = pgstat_fetch_stat_numbackends();
+    for (int curr_backend = 1; curr_backend <= num_backends; curr_backend++) {
+        LocalPgBackendStatus *local_beentry;
+        PgBackendStatus *beentry;
+        if (!(local_beentry = pgstat_fetch_stat_local_beentry(curr_backend))) continue;
+        beentry = &local_beentry->backendStatus;
+        if (kill(beentry->st_procpid, SIGUSR1)) W("kill");
+    }
+}
+
 EXTENSION(pg_queue_notify) {
     const char *channel = PG_ARGISNULL(0) ? "" : text_to_cstring(PG_GETARG_TEXT_PP(0));
     const char *payload = PG_ARGISNULL(1) ? "" : text_to_cstring(PG_GETARG_TEXT_PP(1));
@@ -157,5 +168,6 @@ EXTENSION(pg_queue_notify) {
     memcpy(pg_queue_shmem->payload, payload, strlen(payload));
     pg_queue_shmem->pid = MyProcPid;
     SpinLockRelease(&pg_queue_shmem->mutex);
+    pg_queue_kill();
     PG_RETURN_VOID();
 }
