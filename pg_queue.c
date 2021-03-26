@@ -166,7 +166,10 @@ EXTENSION(pg_queue_listening_channels) {
     FuncCallContext *funcctx;
     if (SRF_IS_FIRSTCALL()) funcctx = SRF_FIRSTCALL_INIT();
     funcctx = SRF_PERCALL_SETUP();
-    if (funcctx->call_cntr < list_length(pg_queue_channel)) SRF_RETURN_NEXT(funcctx, CStringGetTextDatum((char *)list_nth(pg_queue_channel, funcctx->call_cntr)));
+    if (funcctx->call_cntr < list_length(pg_queue_channel)) {
+        char *channel = (char *)list_nth(pg_queue_channel, funcctx->call_cntr);
+        SRF_RETURN_NEXT(funcctx, CStringGetTextDatum(channel));
+    }
     SRF_RETURN_DONE(funcctx);
 }
 
