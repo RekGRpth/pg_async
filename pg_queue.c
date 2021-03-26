@@ -182,7 +182,10 @@ EXTENSION(pg_queue_unlisten) {
         SpinLockAcquire(&pg_queue_shmem->mutex);
         if (!strcmp(channel, pg_queue_shmem->channel)) found = true;
         SpinLockRelease(&pg_queue_shmem->mutex);
-        if (found) pqsignal(SIGUSR1, pg_queue_signal_original);
+        if (found) {
+            pqsignal(SIGUSR1, pg_queue_signal_original);
+            pg_queue_signal_original = NULL;
+        }
     }
     PG_RETURN_VOID();
 }
