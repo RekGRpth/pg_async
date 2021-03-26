@@ -98,23 +98,6 @@ static pg_queue_shmem_t *pg_queue_shmem;
 static pqsigfunc pg_queue_signal_original = NULL;
 static shmem_startup_hook_type pg_queue_shmem_startup_hook_original = NULL;
 
-static void pg_queue_signal(SIGNAL_ARGS) {
-    char *channel;
-    char *payload;
-    int32 pid;
-    SpinLockAcquire(&pg_queue_shmem->mutex);
-    channel = pstrdup(pg_queue_shmem->channel);
-    payload = pstrdup(pg_queue_shmem->payload);
-    pid = pg_queue_shmem->pid;
-    SpinLockRelease(&pg_queue_shmem->mutex);
-    D1("channel = %s, payload = %s, pid = %i", channel, payload, pid);
-    NotifyMyFrontEnd(channel, payload, pid);
-    pq_flush();
-    pg_queue_signal_original(postgres_signal_arg);
-    pfree(channel);
-    pfree(payload);
-}
-
 static void pg_queue_shmem_startup_hook(void) {
     bool found;
     if (pg_queue_shmem_startup_hook_original) pg_queue_shmem_startup_hook_original();
@@ -139,6 +122,23 @@ void _PG_init(void); void _PG_init(void) {
     pg_queue_shmem_startup_hook_original = shmem_startup_hook;
     shmem_startup_hook = pg_queue_shmem_startup_hook;
     RequestAddinShmemSpace(MAXALIGN(sizeof(*pg_queue_shmem)));
+}
+
+static void pg_queue_signal(SIGNAL_ARGS) {
+    char *channel;
+    char *payload;
+    int32 pid;
+    SpinLockAcquire(&pg_queue_shmem->mutex);
+    channel = pstrdup(pg_queue_shmem->channel);
+    payload = pstrdup(pg_queue_shmem->payload);
+    pid = pg_queue_shmem->pid;
+    SpinLockRelease(&pg_queue_shmem->mutex);
+    D1("channel = %s, payload = %s, pid = %i", channel, payload, pid);
+    NotifyMyFrontEnd(channel, payload, pid);
+    pq_flush();
+    pg_queue_signal_original(postgres_signal_arg);
+    pfree(channel);
+    pfree(payload);
 }
 
 EXTENSION(pg_queue_listen) {
