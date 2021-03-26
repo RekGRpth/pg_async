@@ -85,8 +85,14 @@
 
 PG_MODULE_MAGIC;
 
+typedef struct pg_queue_shmem_t {
+    slock_t mutex;
+} pg_queue_shmem_t;
+
 static int pg_queue_size;
+static pg_queue_shmem_t *pg_queue_shmem;
 static pqsigfunc pg_queue_signal_original = NULL;
+static shmem_startup_hook_type pg_queue_shmem_startup_hook_original = NULL;
 
 static void pg_queue_signal(SIGNAL_ARGS) {
     D1("hi");
@@ -95,9 +101,29 @@ static void pg_queue_signal(SIGNAL_ARGS) {
     pg_queue_signal_original(postgres_signal_arg);
 }
 
+static void pg_queue_shmem_startup_hook(void) {
+    bool found;
+    if (pg_queue_shmem_startup_hook_original) pg_queue_shmem_startup_hook_original();
+    pg_queue_shmem = NULL;
+    LWLockAcquire(AddinShmemInitLock, LW_EXCLUSIVE);
+    pg_queue_shmem = ShmemInitStruct("pg_queue", sizeof(*pg_queue_shmem), &found);
+    if (!found) {
+        SpinLockInit(&pg_queue_shmem->mutex);
+    }
+    LWLockRelease(AddinShmemInitLock);
+}
+
+void _PG_fini(void); void _PG_fini(void) {
+    shmem_startup_hook = pg_queue_shmem_startup_hook_original;
+}
+
 void _PG_init(void); void _PG_init(void) {
+    if (!process_shared_preload_libraries_in_progress) return;
     D1("hi");
     DefineCustomIntVariable("pg_queue.size", "pg_queue size", NULL, &pg_queue_size, 1024, 1, INT_MAX, PGC_SIGHUP, 0, NULL, NULL, NULL);
+    pg_queue_shmem_startup_hook_original = shmem_startup_hook;
+    shmem_startup_hook = pg_queue_shmem_startup_hook;
+    RequestAddinShmemSpace(MAXALIGN(sizeof(*pg_queue_shmem)));
 }
 
 EXTENSION(pg_queue_listen) {
