@@ -158,12 +158,13 @@ static void pg_queue_kill(void) {
 }
 
 EXTENSION(pg_queue_notify) {
-    const char *channel = PG_ARGISNULL(0) ? "" : text_to_cstring(PG_GETARG_TEXT_PP(0));
-    const char *payload = PG_ARGISNULL(1) ? "" : text_to_cstring(PG_GETARG_TEXT_PP(1));
-    D1("channel = %s, payload = %s", channel, payload);
+    text *channel = PG_ARGISNULL(0) ? NULL : DatumGetTextP(PG_GETARG_DATUM(0));
+    text *payload = PG_ARGISNULL(1) ? NULL : DatumGetTextP(PG_GETARG_DATUM(1));
     SpinLockAcquire(&pg_queue_shmem->mutex);
-    memcpy(pg_queue_shmem->channel, channel, strlen(channel));
-    memcpy(pg_queue_shmem->payload, payload, strlen(payload));
+    memcpy(pg_queue_shmem->channel, VARDATA_ANY(channel), Min(NAMEDATALEN - 1, VARSIZE_ANY_EXHDR(channel)));
+    pg_queue_shmem->channel[Min(NAMEDATALEN - 1, VARSIZE_ANY_EXHDR(channel))] = '\0';
+    memcpy(pg_queue_shmem->payload, VARDATA_ANY(payload), Min(NOTIFY_PAYLOAD_MAX_LENGTH - 1, VARSIZE_ANY_EXHDR(payload)));
+    pg_queue_shmem->payload[Min(NOTIFY_PAYLOAD_MAX_LENGTH - 1, VARSIZE_ANY_EXHDR(payload))] = '\0';
     pg_queue_shmem->pid = MyProcPid;
     SpinLockRelease(&pg_queue_shmem->mutex);
     pg_queue_kill();
