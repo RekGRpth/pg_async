@@ -85,7 +85,11 @@
 
 PG_MODULE_MAGIC;
 
+#define NOTIFY_PAYLOAD_MAX_LENGTH (BLCKSZ - NAMEDATALEN - 128)
 typedef struct pg_queue_shmem_t {
+    char channel[NAMEDATALEN];
+    char payload[NOTIFY_PAYLOAD_MAX_LENGTH];
+    int32 pid;
     slock_t mutex;
 } pg_queue_shmem_t;
 
@@ -95,10 +99,20 @@ static pqsigfunc pg_queue_signal_original = NULL;
 static shmem_startup_hook_type pg_queue_shmem_startup_hook_original = NULL;
 
 static void pg_queue_signal(SIGNAL_ARGS) {
-    D1("hi");
-    NotifyMyFrontEnd("qwe", "rty", MyProcPid);
+    char *channel;
+    char *payload;
+    int32 pid;
+    SpinLockAcquire(&pg_queue_shmem->mutex);
+    channel = pstrdup(pg_queue_shmem->channel);
+    payload = pstrdup(pg_queue_shmem->payload);
+    pid = pg_queue_shmem->pid;
+    SpinLockRelease(&pg_queue_shmem->mutex);
+    D1("channel = %s, payload = %s, pid = %i", channel, payload, pid);
+    NotifyMyFrontEnd(channel, payload, pid);
     pq_flush();
     pg_queue_signal_original(postgres_signal_arg);
+    pfree(channel);
+    pfree(payload);
 }
 
 static void pg_queue_shmem_startup_hook(void) {
@@ -108,6 +122,7 @@ static void pg_queue_shmem_startup_hook(void) {
     LWLockAcquire(AddinShmemInitLock, LW_EXCLUSIVE);
     pg_queue_shmem = ShmemInitStruct("pg_queue", sizeof(*pg_queue_shmem), &found);
     if (!found) {
+        MemSet(pg_queue_shmem, 0, sizeof(pg_queue_shmem));
         SpinLockInit(&pg_queue_shmem->mutex);
     }
     LWLockRelease(AddinShmemInitLock);
@@ -129,6 +144,7 @@ void _PG_init(void); void _PG_init(void) {
 EXTENSION(pg_queue_listen) {
     const char *channel = PG_ARGISNULL(0) ? "" : text_to_cstring(PG_GETARG_TEXT_PP(0));
     D1("channel = %s", channel);
+    if (!pg_queue_signal_original) pg_queue_signal_original = pqsignal(SIGUSR1, pg_queue_signal);
     PG_RETURN_VOID();
 }
 
@@ -136,6 +152,10 @@ EXTENSION(pg_queue_notify) {
     const char *channel = PG_ARGISNULL(0) ? "" : text_to_cstring(PG_GETARG_TEXT_PP(0));
     const char *payload = PG_ARGISNULL(1) ? "" : text_to_cstring(PG_GETARG_TEXT_PP(1));
     D1("channel = %s, payload = %s", channel, payload);
-    if (!pg_queue_signal_original) pg_queue_signal_original = pqsignal(SIGUSR1, pg_queue_signal);
+    SpinLockAcquire(&pg_queue_shmem->mutex);
+    memcpy(pg_queue_shmem->channel, channel, strlen(channel));
+    memcpy(pg_queue_shmem->payload, payload, strlen(payload));
+    pg_queue_shmem->pid = MyProcPid;
+    SpinLockRelease(&pg_queue_shmem->mutex);
     PG_RETURN_VOID();
 }
