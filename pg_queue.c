@@ -126,7 +126,10 @@ void _PG_init(void); void _PG_init(void) {
 
 static bool pg_queue_channel_exists(const char *channel) {
     ListCell *p;
-    foreach(p, pg_queue_channel) if (!strcmp((char *)lfirst(p), channel)) return true;
+    foreach(p, pg_queue_channel) {
+        char *lchan = (char *) lfirst(p);
+        if (!strcmp(lchan, channel)) return true;
+    }
     return false;
 }
 
