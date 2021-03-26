@@ -162,15 +162,27 @@ static void pg_queue_kill(void) {
 EXTENSION(pg_queue_notify) {
     char *channel = PG_ARGISNULL(0) ? "" : text_to_cstring(PG_GETARG_TEXT_PP(0));
     text *payload = PG_ARGISNULL(1) ? NULL : DatumGetTextP(PG_GETARG_DATUM(1));
-    bool kill = false;
+    bool found = false;
     SpinLockAcquire(&pg_queue_shmem->mutex);
     if (!strcmp(channel, pg_queue_shmem->channel)) {
         if (payload) memcpy(pg_queue_shmem->payload, VARDATA_ANY(payload), Min(NOTIFY_PAYLOAD_MAX_LENGTH - 1, VARSIZE_ANY_EXHDR(payload)));
         pg_queue_shmem->payload[payload ? Min(NOTIFY_PAYLOAD_MAX_LENGTH - 1, VARSIZE_ANY_EXHDR(payload)) : sizeof("") - 1] = '\0';
         pg_queue_shmem->pid = MyProcPid;
-        kill = true;
+        found = true;
     }
     SpinLockRelease(&pg_queue_shmem->mutex);
-    if (kill) pg_queue_kill();
+    if (found) pg_queue_kill();
+    PG_RETURN_VOID();
+}
+
+EXTENSION(pg_queue_unlisten) {
+    if (pg_queue_signal_original) {
+        char *channel = PG_ARGISNULL(0) ? "" : text_to_cstring(PG_GETARG_TEXT_PP(0));
+        bool found = false;
+        SpinLockAcquire(&pg_queue_shmem->mutex);
+        if (!strcmp(channel, pg_queue_shmem->channel)) found = true;
+        SpinLockRelease(&pg_queue_shmem->mutex);
+        if (found) pqsignal(SIGUSR1, pg_queue_signal_original);
+    }
     PG_RETURN_VOID();
 }
