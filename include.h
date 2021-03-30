@@ -107,5 +107,6 @@ extern void AtPrepare_Notify_My(void);
 extern void ProcessCompletedNotifiesMy(void);
 extern void HandleNotifyInterruptMy(void);
 extern void ProcessNotifyInterruptMy(void);
+extern Datum pg_listening_channels_my(PG_FUNCTION_ARGS);
 
 #endif // _INCLUDE_H_

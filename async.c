@@ -820,7 +820,7 @@ Async_UnlistenAll_My(void)
  * change within a transaction.
  */
 Datum
-pg_listening_channels(PG_FUNCTION_ARGS)
+pg_listening_channels_my(PG_FUNCTION_ARGS)
 {
 	FuncCallContext *funcctx;
 
