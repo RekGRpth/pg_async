@@ -62,6 +62,7 @@ void _PG_init(void); void _PG_init(void) {
     pg_queue_shmem_startup_hook_original = shmem_startup_hook;
     shmem_startup_hook = pg_queue_shmem_startup_hook;
     RequestAddinShmemSpace(MAXALIGN(sizeof(*pg_queue_shmem)));
+    Trace_notify_my = true;
 }
 
 static bool pg_queue_channel_exists(const char *channel) {
@@ -97,8 +98,8 @@ static void pg_queue_signal(SIGNAL_ARGS) {
 EXTENSION(pg_queue_listen) {
     const char *channel = PG_ARGISNULL(0) ? "" : text_to_cstring(PG_GETARG_TEXT_PP(0));
     Async_Listen_My(channel);
-    if (!pg_queue_signal_original) pg_queue_signal_original = pqsignal(SIGUSR1, pg_queue_signal);
     AtCommit_Notify_My();
+    if (!pg_queue_signal_original) pg_queue_signal_original = pqsignal(SIGUSR1, pg_queue_signal);
     PG_RETURN_VOID();
 }
 
