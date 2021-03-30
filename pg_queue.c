@@ -100,6 +100,7 @@ static void pg_queue_signal(SIGNAL_ARGS) {
 EXTENSION(pg_queue_listen) {
     const char *channel = PG_ARGISNULL(0) ? "" : text_to_cstring(PG_GETARG_TEXT_PP(0));
     Async_Listen_My(channel);
+    PreCommit_Notify_My();
     AtCommit_Notify_My();
     if (!pg_queue_signal_original) pg_queue_signal_original = pqsignal(SIGUSR1, pg_queue_signal);
     PG_RETURN_VOID();
@@ -220,6 +221,7 @@ EXTENSION(pg_queue_unlisten_all) {
         pg_queue_signal_original = NULL;
     }
     Async_UnlistenAll_My();
+    PreCommit_Notify_My();
     AtCommit_Notify_My();
     PG_RETURN_VOID();
 }
@@ -227,6 +229,7 @@ EXTENSION(pg_queue_unlisten_all) {
 EXTENSION(pg_queue_unlisten) {
     const char *channel = PG_ARGISNULL(0) ? "" : text_to_cstring(PG_GETARG_TEXT_PP(0));
     Async_Unlisten_My(channel);
+    PreCommit_Notify_My();
     AtCommit_Notify_My();
     PG_RETURN_VOID();
 }
