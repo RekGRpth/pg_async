@@ -110,6 +110,10 @@ EXTENSION(pg_queue_listening_channels) {
     return pg_listening_channels_my(fcinfo);
 }
 
+EXTENSION(pg_queue_notification_queue_usage) {
+    return pg_notification_queue_usage_my(fcinfo);
+}
+
 static void pg_queue_kill(void) {
     int num_backends = pgstat_fetch_stat_numbackends();
     for (int curr_backend = 1; curr_backend <= num_backends; curr_backend++) {
@@ -177,7 +181,8 @@ static void AddEventToPendingNotifies(Notification *n) {
 }
 
 EXTENSION(pg_queue_notify) {
-    const char *channel = PG_ARGISNULL(0) ? "" : text_to_cstring(PG_GETARG_TEXT_PP(0));
+    return pg_notify_my(fcinfo);
+/*    const char *channel = PG_ARGISNULL(0) ? "" : text_to_cstring(PG_GETARG_TEXT_PP(0));
     const char *payload = PG_ARGISNULL(1) ? "" : text_to_cstring(PG_GETARG_TEXT_PP(1));
     size_t channel_len = PG_ARGISNULL(0) ? 0 : strlen(channel);
     size_t payload_len = PG_ARGISNULL(1) ? 0 : strlen(payload);
@@ -212,7 +217,7 @@ EXTENSION(pg_queue_notify) {
     pg_queue_shmem->pid = MyProcPid;
     SpinLockRelease(&pg_queue_shmem->mutex);
     pg_queue_kill();
-    PG_RETURN_VOID();
+    PG_RETURN_VOID();*/
 }
 
 EXTENSION(pg_queue_unlisten_all) {

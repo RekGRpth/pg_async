@@ -587,7 +587,7 @@ AsyncShmemInitMy(void)
  *	  SQL function to send a notification event
  */
 Datum
-pg_notify(PG_FUNCTION_ARGS)
+pg_notify_my(PG_FUNCTION_ARGS)
 {
 	const char *channel;
 	const char *payload;
@@ -1569,7 +1569,7 @@ asyncQueueAddEntries(ListCell *nextNotify)
  * occupied.
  */
 Datum
-pg_notification_queue_usage(PG_FUNCTION_ARGS)
+pg_notification_queue_usage_my(PG_FUNCTION_ARGS)
 {
 	double		usage;
 
