@@ -49,6 +49,7 @@ static void pg_queue_shmem_startup_hook(void) {
         MemSet(pg_queue_shmem, 0, sizeof(pg_queue_shmem));
         SpinLockInit(&pg_queue_shmem->mutex);
     }
+    AsyncShmemInitMy();
     LWLockRelease(AddinShmemInitLock);
 }
 
@@ -62,6 +63,7 @@ void _PG_init(void); void _PG_init(void) {
     pg_queue_shmem_startup_hook_original = shmem_startup_hook;
     shmem_startup_hook = pg_queue_shmem_startup_hook;
     RequestAddinShmemSpace(MAXALIGN(sizeof(*pg_queue_shmem)));
+    RequestAddinShmemSpace(AsyncShmemSizeMy());
     Trace_notify_my = true;
 }
 
