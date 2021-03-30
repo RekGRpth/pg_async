@@ -218,12 +218,7 @@ EXTENSION(pg_queue_notify) {
 }
 
 EXTENSION(pg_queue_unlisten_all) {
-    list_free_deep(listenChannels);
-    listenChannels = NIL;
-    if (pg_queue_signal_original) {
-        pqsignal(SIGUSR1, pg_queue_signal_original);
-        pg_queue_signal_original = NULL;
-    }
+    Async_UnlistenAll_My();
     PG_RETURN_VOID();
 }
 
