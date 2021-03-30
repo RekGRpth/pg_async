@@ -219,6 +219,10 @@ EXTENSION(pg_queue_notify) {
 
 EXTENSION(pg_queue_unlisten_all) {
     Async_UnlistenAll_My();
+    if (pg_queue_signal_original) {
+        pqsignal(SIGUSR1, pg_queue_signal_original);
+        pg_queue_signal_original = NULL;
+    }
     PG_RETURN_VOID();
 }
 
