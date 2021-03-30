@@ -896,6 +896,8 @@ void
 PreCommit_Notify_My(void)
 {
 	ListCell   *p;
+D1("pendingActions = %s", pendingActions ? "true" : "false");
+D1("pendingNotifies = %s", pendingNotifies ? "true" : "false");
 
 	if (!pendingActions && !pendingNotifies)
 		return;					/* no relevant statements in this xact */
@@ -924,7 +926,7 @@ PreCommit_Notify_My(void)
 			}
 		}
 	}
-D1("hi");
+D1("backendHasSentNotifications = %s", backendHasSentNotifications ? "true" : "false");
 
 	/* Queue any pending notifies (must happen after the above) */
 	if (pendingNotifies)
@@ -938,7 +940,7 @@ D1("hi");
 		 * holding NotifyQueueLock.
 		 */
 //		(void) GetCurrentTransactionId();
-D1("hi");
+D1("backendHasSentNotifications = %s", backendHasSentNotifications ? "true" : "false");
 		/*
 		 * Serialize writers by acquiring a special lock that we hold till
 		 * after commit.  This ensures that queue entries appear in commit
@@ -1235,7 +1237,7 @@ void
 ProcessCompletedNotifiesMy(void)
 {
 	MemoryContext caller_context;
-
+D1("hi");
 	/* Nothing to do if we didn't send any notifications */
 	if (!backendHasSentNotifications)
 		return;
@@ -1923,6 +1925,7 @@ HandleNotifyInterruptMy(void)
 void
 ProcessNotifyInterruptMy(void)
 {
+D1("hi");
 	if (IsTransactionOrTransactionBlock())
 		return;					/* not really idle */
 

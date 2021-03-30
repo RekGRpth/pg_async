@@ -26,6 +26,7 @@ void _PG_init(void); void _PG_init(void) {
 }
 
 static void pg_queue_signal(SIGNAL_ARGS) {
+    D1("hi");
     HandleNotifyInterruptMy();
     if (notifyInterruptPendingMy) ProcessNotifyInterruptMy();
     pg_queue_signal_original(postgres_signal_arg);
@@ -33,23 +34,31 @@ static void pg_queue_signal(SIGNAL_ARGS) {
 
 EXTENSION(pg_queue_listen) {
     const char *channel = PG_ARGISNULL(0) ? "" : text_to_cstring(PG_GETARG_TEXT_PP(0));
+    if (!pg_queue_signal_original) pg_queue_signal_original = pqsignal(SIGUSR1, pg_queue_signal);
     Async_Listen_My(channel);
     PreCommit_Notify_My();
     AtCommit_Notify_My();
-    if (!pg_queue_signal_original) pg_queue_signal_original = pqsignal(SIGUSR1, pg_queue_signal);
     PG_RETURN_VOID();
 }
 
 EXTENSION(pg_queue_listening_channels) {
-    return pg_listening_channels_my(fcinfo);
+    Datum datum = pg_listening_channels_my(fcinfo);
+    PreCommit_Notify_My();
+    AtCommit_Notify_My();
+    return datum;
 }
 
 EXTENSION(pg_queue_notification_queue_usage) {
-    return pg_notification_queue_usage_my(fcinfo);
+    Datum datum = pg_notification_queue_usage_my(fcinfo);
+    PreCommit_Notify_My();
+    AtCommit_Notify_My();
+    return datum;
 }
 
 EXTENSION(pg_queue_notify) {
     pg_notify_my(fcinfo);
+    PreCommit_Notify_My();
+    AtCommit_Notify_My();
     ProcessCompletedNotifiesMy();
     PG_RETURN_VOID();
 }
