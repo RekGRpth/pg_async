@@ -77,7 +77,7 @@ static bool pg_queue_channel_exists(const char *channel) {
 }
 
 static void pg_queue_signal(SIGNAL_ARGS) {
-    if (listenChannels != NIL) {
+    /*if (listenChannels != NIL) {
         char *channel;
         char *payload;
         int32 pid;
@@ -94,6 +94,9 @@ static void pg_queue_signal(SIGNAL_ARGS) {
         pfree(channel);
         pfree(payload);
     }
+    if (CheckProcSignal(PROCSIG_NOTIFY_INTERRUPT)) */
+    HandleNotifyInterruptMy();
+    if (notifyInterruptPendingMy) ProcessNotifyInterruptMy();
     pg_queue_signal_original(postgres_signal_arg);
 }
 
