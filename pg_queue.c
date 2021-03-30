@@ -26,7 +26,7 @@ void _PG_init(void); void _PG_init(void) {
 
 static void pg_queue_signal(SIGNAL_ARGS) {
     HandleNotifyInterruptMy();
-    if (notifyInterruptPendingMy) ProcessNotifyInterruptMy();
+    if (notifyInterruptPending) ProcessNotifyInterruptMy();
     pg_queue_signal_original(postgres_signal_arg);
 }
 

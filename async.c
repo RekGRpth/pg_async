@@ -419,11 +419,11 @@ static NotificationList *pendingNotifies = NULL;
 /*
  * Inbound notifications are initially processed by HandleNotifyInterruptMy(),
  * called from inside a signal handler. That just sets the
- * notifyInterruptPendingMy flag and sets the process
+ * notifyInterruptPending flag and sets the process
  * latch. ProcessNotifyInterruptMy() will then be called whenever it's safe to
  * actually deal with the interrupt.
  */
-volatile sig_atomic_t notifyInterruptPendingMy = false;
+//volatile sig_atomic_t notifyInterruptPending = false;
 
 /* True if we've registered an on_shmem_exit cleanup */
 static bool unlistenExitRegistered = false;
@@ -438,7 +438,7 @@ static bool backendHasSentNotifications = false;
 static bool backendTryAdvanceTail = false;
 
 /* GUC parameter */
-//bool		Trace_notify_my = false;
+//bool		Trace_notify = false;
 
 /* local function prototypes */
 static int	asyncQueuePageDiff(int p, int q);
@@ -1900,7 +1900,7 @@ HandleNotifyInterruptMy(void)
 	 */
 
 	/* signal that work needs to be done */
-	notifyInterruptPendingMy = true;
+	notifyInterruptPending = true;
 
 	/* make sure the event is processed in due course */
 	SetLatch(MyLatch);
@@ -1909,7 +1909,7 @@ HandleNotifyInterruptMy(void)
 /*
  * ProcessNotifyInterruptMy
  *
- *		This is called if we see notifyInterruptPendingMy set, just before
+ *		This is called if we see notifyInterruptPending set, just before
  *		transmitting ReadyForQuery at the end of a frontend command, and
  *		also if a notify signal occurs while reading from the frontend.
  *		HandleNotifyInterruptMy() will cause the read to be interrupted
@@ -1923,7 +1923,7 @@ ProcessNotifyInterruptMy(void)
 	if (IsTransactionOrTransactionBlock())
 		return;					/* not really idle */
 
-	while (notifyInterruptPendingMy)
+	while (notifyInterruptPending)
 		ProcessIncomingNotify();
 }
 
@@ -2277,7 +2277,7 @@ static void
 ProcessIncomingNotify(void)
 {
 	/* We *must* reset the flag */
-	notifyInterruptPendingMy = false;
+	notifyInterruptPending = false;
 
 	/* Do nothing else if we aren't actively listening */
 	if (listenChannels == NIL)

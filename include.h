@@ -89,7 +89,6 @@
 
 #define NUM_NOTIFY_BUFFERS	8
 
-extern volatile sig_atomic_t notifyInterruptPendingMy;
 extern Size AsyncShmemSizeMy(void);
 extern void AsyncShmemInitMy(void);
 extern void NotifyMyFrontEndMy(const char *channel, const char *payload, int32 srcPid);
