@@ -229,18 +229,6 @@ EXTENSION(pg_queue_unlisten_all) {
 
 EXTENSION(pg_queue_unlisten) {
     const char *channel = PG_ARGISNULL(0) ? "" : text_to_cstring(PG_GETARG_TEXT_PP(0));
-    ListCell *q;
-    foreach(q, listenChannels) {
-        char *lchan = (char *)lfirst(q);
-        if (!strcmp(lchan, channel)) {
-            listenChannels = foreach_delete_current(listenChannels, q);
-            pfree(lchan);
-            break;
-        }
-    }
-    if (!list_length(listenChannels) && pg_queue_signal_original) {
-        pqsignal(SIGUSR1, pg_queue_signal_original);
-        pg_queue_signal_original = NULL;
-    }
+    Async_Unlisten_My(channel);
     PG_RETURN_VOID();
 }
