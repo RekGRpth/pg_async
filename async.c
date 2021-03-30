@@ -1262,7 +1262,7 @@ D1("hi");
 	 * We must run asyncQueueReadAllNotifications inside a transaction, else
 	 * bad things happen if it gets an error.
 	 */
-	StartTransactionCommand();
+//	StartTransactionCommand();
 
 	/* Send signals to other backends */
 	SignalBackends();
@@ -1282,7 +1282,7 @@ D1("hi");
 		asyncQueueAdvanceTail();
 	}
 
-	CommitTransactionCommand();
+//	CommitTransactionCommand();
 
 	MemoryContextSwitchTo(caller_context);
 
@@ -2008,7 +2008,7 @@ D1("hi");
 	 * before we see them.
 	 *----------
 	 */
-	snapshot = RegisterSnapshot(GetLatestSnapshot());
+//	snapshot = RegisterSnapshot(GetLatestSnapshot());
 
 	/*
 	 * It is possible that we fail while trying to send a message to our
@@ -2087,7 +2087,7 @@ D1("hi");
 	PG_END_TRY();
 
 	/* Done with snapshot */
-	UnregisterSnapshot(snapshot);
+//	UnregisterSnapshot(snapshot);
 }
 
 /*
@@ -2299,11 +2299,11 @@ ProcessIncomingNotify(void)
 	 * We must run asyncQueueReadAllNotifications inside a transaction, else
 	 * bad things happen if it gets an error.
 	 */
-	StartTransactionCommand();
+//	StartTransactionCommand();
 
 	asyncQueueReadAllNotifications();
 
-	CommitTransactionCommand();
+//	CommitTransactionCommand();
 
 	/*
 	 * Must flush the notify messages to ensure frontend gets them promptly.
