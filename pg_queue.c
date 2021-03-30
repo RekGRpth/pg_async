@@ -96,12 +96,8 @@ static void pg_queue_signal(SIGNAL_ARGS) {
 
 EXTENSION(pg_queue_listen) {
     const char *channel = PG_ARGISNULL(0) ? "" : text_to_cstring(PG_GETARG_TEXT_PP(0));
-    if (!pg_queue_channel_exists(channel)) {
-        MemoryContext oldcontext = MemoryContextSwitchTo(TopMemoryContext);
-        listenChannels = lappend(listenChannels, pstrdup(channel));
-        MemoryContextSwitchTo(oldcontext);
-        if (!pg_queue_signal_original) pg_queue_signal_original = pqsignal(SIGUSR1, pg_queue_signal);
-    }
+    Async_Listen_My(channel);
+    if (!pg_queue_signal_original) pg_queue_signal_original = pqsignal(SIGUSR1, pg_queue_signal);
     PG_RETURN_VOID();
 }
 
