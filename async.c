@@ -673,7 +673,7 @@ Async_Notify_My(const char *channel, const char *payload)
 		strcpy(n->data + channel_len + 1, payload);
 	else
 		n->data[channel_len + 1] = '\0';
-//D1("%i > %i", my_level, pendingNotifies->nestingLevel);
+
 	if (pendingNotifies == NULL || my_level > pendingNotifies->nestingLevel)
 	{
 		NotificationList *notifies;
@@ -695,7 +695,6 @@ Async_Notify_My(const char *channel, const char *payload)
 	}
 	else
 	{
-D1("hi");
 		/* Now check for duplicates */
 		if (AsyncExistsPendingNotify(n))
 		{
@@ -704,7 +703,6 @@ D1("hi");
 			MemoryContextSwitchTo(oldcontext);
 			return;
 		}
-D1("hi");
 
 		/* Append more events to existing list */
 		AddEventToPendingNotifies(n);
@@ -896,8 +894,6 @@ void
 PreCommit_Notify_My(void)
 {
 	ListCell   *p;
-D1("pendingActions = %s", pendingActions ? "true" : "false");
-D1("pendingNotifies = %s", pendingNotifies ? "true" : "false");
 
 	if (!pendingActions && !pendingNotifies)
 		return;					/* no relevant statements in this xact */
@@ -926,7 +922,6 @@ D1("pendingNotifies = %s", pendingNotifies ? "true" : "false");
 			}
 		}
 	}
-D1("backendHasSentNotifications = %s", backendHasSentNotifications ? "true" : "false");
 
 	/* Queue any pending notifies (must happen after the above) */
 	if (pendingNotifies)
@@ -940,7 +935,7 @@ D1("backendHasSentNotifications = %s", backendHasSentNotifications ? "true" : "f
 		 * holding NotifyQueueLock.
 		 */
 //		(void) GetCurrentTransactionId();
-D1("backendHasSentNotifications = %s", backendHasSentNotifications ? "true" : "false");
+
 		/*
 		 * Serialize writers by acquiring a special lock that we hold till
 		 * after commit.  This ensures that queue entries appear in commit
@@ -1237,7 +1232,7 @@ void
 ProcessCompletedNotifiesMy(void)
 {
 	MemoryContext caller_context;
-D1("hi");
+
 	/* Nothing to do if we didn't send any notifications */
 	if (!backendHasSentNotifications)
 		return;
@@ -1925,7 +1920,6 @@ HandleNotifyInterruptMy(void)
 void
 ProcessNotifyInterruptMy(void)
 {
-D1("hi");
 	if (IsTransactionOrTransactionBlock())
 		return;					/* not really idle */
 
@@ -1961,13 +1955,12 @@ asyncQueueReadAllNotifications(void)
 	pos = oldpos = QUEUE_BACKEND_POS(MyBackendId);
 	head = QUEUE_HEAD;
 	LWLockRelease(NotifyQueueLock);
-D1("hi");
+
 	if (QUEUE_POS_EQUAL(pos, head))
 	{
 		/* Nothing to do, we have read all notifications already. */
 		return;
 	}
-D1("hi");
 
 	/*----------
 	 * Get snapshot we'll use to decide which xacts are still in progress.
@@ -2119,7 +2112,7 @@ asyncQueueProcessPageEntries(volatile QueuePosition *current,
 	do
 	{
 		QueuePosition thisentry = *current;
-D1("hi");
+
 		if (QUEUE_POS_EQUAL(thisentry, stop))
 			break;
 
@@ -2322,8 +2315,6 @@ ProcessIncomingNotify(void)
 void
 NotifyMyFrontEndMy(const char *channel, const char *payload, int32 srcPid)
 {
-	if (Trace_notify_my)
-		elog(DEBUG1, "NOTIFY for \"%s\" payload \"%s\"", channel, payload);
 	if (whereToSendOutput == DestRemote)
 	{
 		StringInfoData buf;
@@ -2351,7 +2342,7 @@ AsyncExistsPendingNotify(Notification *n)
 {
 	if (pendingNotifies == NULL)
 		return false;
-D1("hi");
+
 	if (pendingNotifies->hashtab != NULL)
 	{
 		/* Use the hash table to probe for a match */
@@ -2391,7 +2382,7 @@ static void
 AddEventToPendingNotifies(Notification *n)
 {
 	Assert(pendingNotifies->events != NIL);
-D1("hi");
+
 	/* Create the hash table if it's time to */
 	if (list_length(pendingNotifies->events) >= MIN_HASHABLE_NOTIFIES &&
 		pendingNotifies->hashtab == NULL)
