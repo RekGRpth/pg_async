@@ -22,7 +22,6 @@ void _PG_init(void); void _PG_init(void) {
     pg_queue_shmem_startup_hook_original = shmem_startup_hook;
     shmem_startup_hook = pg_queue_shmem_startup_hook;
     RequestAddinShmemSpace(AsyncShmemSizeMy());
-    Trace_notify_my = true;
 }
 
 static void pg_queue_signal(SIGNAL_ARGS) {

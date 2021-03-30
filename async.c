@@ -438,7 +438,7 @@ static bool backendHasSentNotifications = false;
 static bool backendTryAdvanceTail = false;
 
 /* GUC parameter */
-bool		Trace_notify_my = false;
+//bool		Trace_notify_my = false;
 
 /* local function prototypes */
 static int	asyncQueuePageDiff(int p, int q);
@@ -632,7 +632,7 @@ Async_Notify_My(const char *channel, const char *payload)
 	if (IsParallelWorker())
 		elog(ERROR, "cannot send notifications from a parallel worker");
 
-	if (Trace_notify_my)
+	if (Trace_notify)
 		elog(DEBUG1, "Async_Notify_My(%s)", channel);
 
 	channel_len = channel ? strlen(channel) : 0;
@@ -770,7 +770,7 @@ queue_listen(ListenActionKind action, const char *channel)
 void
 Async_Listen_My(const char *channel)
 {
-	if (Trace_notify_my)
+	if (Trace_notify)
 		elog(DEBUG1, "Async_Listen_My(%s,%d)", channel, MyProcPid);
 
 	queue_listen(LISTEN_LISTEN, channel);
@@ -784,7 +784,7 @@ Async_Listen_My(const char *channel)
 void
 Async_Unlisten_My(const char *channel)
 {
-	if (Trace_notify_my)
+	if (Trace_notify)
 		elog(DEBUG1, "Async_Unlisten_My(%s,%d)", channel, MyProcPid);
 
 	/* If we couldn't possibly be listening, no need to queue anything */
@@ -802,7 +802,7 @@ Async_Unlisten_My(const char *channel)
 void
 Async_UnlistenAll_My(void)
 {
-	if (Trace_notify_my)
+	if (Trace_notify)
 		elog(DEBUG1, "Async_UnlistenAll_My(%d)", MyProcPid);
 
 	/* If we couldn't possibly be listening, no need to queue anything */
@@ -898,7 +898,7 @@ PreCommit_Notify_My(void)
 	if (!pendingActions && !pendingNotifies)
 		return;					/* no relevant statements in this xact */
 
-	if (Trace_notify_my)
+	if (Trace_notify)
 		elog(DEBUG1, "PreCommit_Notify_My");
 
 	/* Preflight for any pending listen/unlisten actions */
@@ -1004,7 +1004,7 @@ AtCommit_Notify_My(void)
 	if (!pendingActions && !pendingNotifies)
 		return;
 
-	if (Trace_notify_my)
+	if (Trace_notify)
 		elog(DEBUG1, "AtCommit_Notify_My");
 
 	/* Perform any pending listen/unlisten actions */
@@ -1056,7 +1056,7 @@ Exec_ListenPreCommit(void)
 	if (amRegisteredListener)
 		return;
 
-	if (Trace_notify_my)
+	if (Trace_notify)
 		elog(DEBUG1, "Exec_ListenPreCommit(%d)", MyProcPid);
 
 	/*
@@ -1169,7 +1169,7 @@ Exec_UnlistenCommit(const char *channel)
 {
 	ListCell   *q;
 
-	if (Trace_notify_my)
+	if (Trace_notify)
 		elog(DEBUG1, "Exec_UnlistenCommit(%s,%d)", channel, MyProcPid);
 
 	foreach(q, listenChannels)
@@ -1198,7 +1198,7 @@ Exec_UnlistenCommit(const char *channel)
 static void
 Exec_UnlistenAllCommit(void)
 {
-	if (Trace_notify_my)
+	if (Trace_notify)
 		elog(DEBUG1, "Exec_UnlistenAllCommit(%d)", MyProcPid);
 
 	list_free_deep(listenChannels);
@@ -1250,7 +1250,7 @@ ProcessCompletedNotifiesMy(void)
 	 */
 	caller_context = CurrentMemoryContext;
 
-	if (Trace_notify_my)
+	if (Trace_notify)
 		elog(DEBUG1, "ProcessCompletedNotifiesMy");
 
 	/*
@@ -2283,7 +2283,7 @@ ProcessIncomingNotify(void)
 	if (listenChannels == NIL)
 		return;
 
-	if (Trace_notify_my)
+	if (Trace_notify)
 		elog(DEBUG1, "ProcessIncomingNotify");
 
 	set_ps_display("notify interrupt");
@@ -2305,7 +2305,7 @@ ProcessIncomingNotify(void)
 
 	set_ps_display("idle");
 
-	if (Trace_notify_my)
+	if (Trace_notify)
 		elog(DEBUG1, "ProcessIncomingNotify: done");
 }
 
