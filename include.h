@@ -53,7 +53,6 @@
 #include <utils/timeout.h>
 //#include <utils/typcache.h>
 
-
 #define FORMAT_0(fmt, ...) "%s(%s:%d): %s", __func__, __FILE__, __LINE__, fmt
 #define FORMAT_1(fmt, ...) "%s(%s:%d): " fmt,  __func__, __FILE__, __LINE__
 #define GET_FORMAT(fmt, ...) GET_FORMAT_PRIVATE(fmt, 0, ##__VA_ARGS__, 1, \
@@ -87,5 +86,26 @@
 #define W(fmt, ...) ereport(WARNING, (errmsg(GET_FORMAT(fmt, ##__VA_ARGS__), ##__VA_ARGS__)))
 
 #define countof(array) (sizeof(array)/sizeof(array[0]))
+
+#define NUM_NOTIFY_BUFFERS	8
+
+extern bool Trace_notify_my;
+extern volatile sig_atomic_t notifyInterruptPendingMy;
+extern Size AsyncShmemSizeMy(void);
+extern void AsyncShmemInitMy(void);
+extern void NotifyMyFrontEndMy(const char *channel, const char *payload, int32 srcPid);
+extern void Async_Notify_My(const char *channel, const char *payload);
+extern void Async_Listen_My(const char *channel);
+extern void Async_Unlisten_My(const char *channel);
+extern void Async_UnlistenAll_My(void);
+extern void PreCommit_Notify_My(void);
+extern void AtCommit_Notify_My(void);
+extern void AtAbort_Notify_My(void);
+extern void AtSubCommit_Notify_My(void);
+extern void AtSubAbort_Notify_My(void);
+extern void AtPrepare_Notify_My(void);
+extern void ProcessCompletedNotifiesMy(void);
+extern void HandleNotifyInterruptMy(void);
+extern void ProcessNotifyInterruptMy(void);
 
 #endif // _INCLUDE_H_
