@@ -173,7 +173,7 @@ typedef struct AsyncQueueEntry
 {
 	int			length;			/* total allocated length of entry */
 	Oid			dboid;			/* sender's database OID */
-	TransactionId xid;			/* sender's XID */
+//	TransactionId xid;			/* sender's XID */
 	int32		srcPid;			/* sender's PID */
 	char		data[NAMEDATALEN + NOTIFY_PAYLOAD_MAX_LENGTH];
 } AsyncQueueEntry;
@@ -603,7 +603,7 @@ pg_notify_my(PG_FUNCTION_ARGS)
 		payload = text_to_cstring(PG_GETARG_TEXT_PP(1));
 
 	/* For NOTIFY as a statement, this is checked in ProcessUtility */
-	PreventCommandDuringRecovery("NOTIFY");
+//	PreventCommandDuringRecovery("NOTIFY");
 
 	Async_Notify_My(channel, payload);
 
@@ -934,7 +934,7 @@ PreCommit_Notify_My(void)
 		 * so cheap if we don't, and we'd prefer not to do that work while
 		 * holding NotifyQueueLock.
 		 */
-		(void) GetCurrentTransactionId();
+//		(void) GetCurrentTransactionId();
 
 		/*
 		 * Serialize writers by acquiring a special lock that we hold till
@@ -953,7 +953,7 @@ PreCommit_Notify_My(void)
 		 * used by the flatfiles mechanism.)
 		 */
 		LockSharedObject(DatabaseRelationId, InvalidOid, 0,
-						 AccessExclusiveLock);
+						 RowExclusiveLock);
 
 		/* Now push the notifications into the queue */
 		backendHasSentNotifications = true;
@@ -1433,7 +1433,7 @@ asyncQueueNotificationToEntry(Notification *n, AsyncQueueEntry *qe)
 	entryLength = QUEUEALIGN(entryLength);
 	qe->length = entryLength;
 	qe->dboid = MyDatabaseId;
-	qe->xid = GetCurrentTransactionId();
+//	qe->xid = GetCurrentTransactionId();
 	qe->srcPid = MyProcPid;
 	memcpy(qe->data, n->data, channellen + payloadlen + 2);
 }
@@ -2128,6 +2128,7 @@ asyncQueueProcessPageEntries(volatile QueuePosition *current,
 		/* Ignore messages destined for other databases */
 		if (qe->dboid == MyDatabaseId)
 		{
+#if 0
 			if (XidInMVCCSnapshot(qe->xid, snapshot))
 			{
 				/*
@@ -2155,6 +2156,7 @@ asyncQueueProcessPageEntries(volatile QueuePosition *current,
 			}
 			else if (TransactionIdDidCommit(qe->xid))
 			{
+#endif
 				/* qe->data is the null-terminated channel name */
 				char	   *channel = qe->data;
 
@@ -2165,6 +2167,7 @@ asyncQueueProcessPageEntries(volatile QueuePosition *current,
 
 					NotifyMyFrontEndMy(channel, payload, qe->srcPid);
 				}
+#if 0
 			}
 			else
 			{
@@ -2173,6 +2176,7 @@ asyncQueueProcessPageEntries(volatile QueuePosition *current,
 				 * ignore its notifications.
 				 */
 			}
+#endif
 		}
 
 		/* Loop back if we're not at end of page */

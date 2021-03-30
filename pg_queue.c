@@ -181,7 +181,8 @@ static void AddEventToPendingNotifies(Notification *n) {
 }
 
 EXTENSION(pg_queue_notify) {
-    return pg_notify_my(fcinfo);
+    pg_notify_my(fcinfo);
+    ProcessCompletedNotifies();
 /*    const char *channel = PG_ARGISNULL(0) ? "" : text_to_cstring(PG_GETARG_TEXT_PP(0));
     const char *payload = PG_ARGISNULL(1) ? "" : text_to_cstring(PG_GETARG_TEXT_PP(1));
     size_t channel_len = PG_ARGISNULL(0) ? 0 : strlen(channel);
@@ -216,8 +217,8 @@ EXTENSION(pg_queue_notify) {
     else pg_queue_shmem->payload[0] = '\0';
     pg_queue_shmem->pid = MyProcPid;
     SpinLockRelease(&pg_queue_shmem->mutex);
-    pg_queue_kill();
-    PG_RETURN_VOID();*/
+    pg_queue_kill();*/
+    PG_RETURN_VOID();
 }
 
 EXTENSION(pg_queue_unlisten_all) {
