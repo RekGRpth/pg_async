@@ -32,6 +32,7 @@ static void pg_queue_ProcessUtility_hook(PlannedStmt *pstmt, const char *querySt
             if (stmt->conditionname) Async_Unlisten_My(stmt->conditionname);
             else Async_UnlistenAll_My();
         } break;
+        default: return pg_queue_ProcessUtility_hook_original ? pg_queue_ProcessUtility_hook_original(pstmt, queryString, context, params, queryEnv, dest, qc) : standard_ProcessUtility(pstmt, queryString, context, params, queryEnv, dest, qc);
     }
     CommandCounterIncrement();
 }
