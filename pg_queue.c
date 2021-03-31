@@ -46,14 +46,22 @@ static void pg_queue_shmem_startup_hook(void) {
 
 static void pg_queue_XactCallback(XactEvent event, void *arg) {
     if (!XactReadOnly) return;
-    PreCommit_Notify_My();
-    AtCommit_Notify_My();
-    ProcessCompletedNotifiesMy();
+    switch (event) {
+        case XACT_EVENT_ABORT: AtAbort_Notify_My(); break;
+        case XACT_EVENT_COMMIT: AtCommit_Notify_My(); ProcessCompletedNotifiesMy(); break;
+        case XACT_EVENT_PRE_COMMIT: PreCommit_Notify_My(); break;
+        case XACT_EVENT_PREPARE: AtPrepare_Notify_My(); break;
+        default: break;
+    }
 }
 
 static void pg_queue_SubXactCallback(SubXactEvent event, SubTransactionId mySubid, SubTransactionId parentSubid, void *arg) {
     if (XactReadOnly) return;
-    AtSubCommit_Notify_My();
+    switch (event) {
+        case SUBXACT_EVENT_ABORT_SUB: AtSubAbort_Notify_My(); break;
+        case SUBXACT_EVENT_PRE_COMMIT_SUB: AtSubCommit_Notify_My(); break;
+        default: break;
+    }
 }
 
 void _PG_fini(void); void _PG_fini(void) {
