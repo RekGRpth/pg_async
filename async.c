@@ -1252,6 +1252,7 @@ void
 ProcessCompletedNotifiesMy(void)
 {
 	MemoryContext caller_context;
+	bool isTransactionBlock = IsTransactionBlock();
 
 	/* Nothing to do if we didn't send any notifications */
 	if (!backendHasSentNotifications)
@@ -1277,7 +1278,8 @@ ProcessCompletedNotifiesMy(void)
 	 * We must run asyncQueueReadAllNotifications inside a transaction, else
 	 * bad things happen if it gets an error.
 	 */
-//	StartTransactionCommand();
+	if (isTransactionBlock)
+	StartTransactionCommand();
 
 	/* Send signals to other backends */
 	SignalBackends();
@@ -1297,7 +1299,8 @@ ProcessCompletedNotifiesMy(void)
 		asyncQueueAdvanceTail();
 	}
 
-//	CommitTransactionCommand();
+	if (isTransactionBlock)
+	CommitTransactionCommand();
 
 	MemoryContextSwitchTo(caller_context);
 
