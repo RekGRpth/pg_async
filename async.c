@@ -952,8 +952,8 @@ PreCommit_Notify_My(void)
 		 * (Historical note: before PG 9.0, a similar lock on "database 0" was
 		 * used by the flatfiles mechanism.)
 		 */
-//		LockSharedObject(DatabaseRelationId, InvalidOid, 0,
-//						 RowExclusiveLock);
+		LockSharedObject(DatabaseRelationId, InvalidOid, 0,
+						 RowExclusiveLock);
 
 		/* Now push the notifications into the queue */
 		backendHasSentNotifications = true;
