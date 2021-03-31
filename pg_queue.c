@@ -4,7 +4,6 @@
 
 PG_MODULE_MAGIC;
 
-static pqsigfunc pg_queue_signal_original = NULL;
 static ProcessUtility_hook_type pg_queue_ProcessUtility_hook_original = NULL;
 static shmem_startup_hook_type pg_queue_shmem_startup_hook_original = NULL;
 
@@ -82,18 +81,9 @@ void _PG_init(void); void _PG_init(void) {
     RegisterXactCallback(pg_queue_XactCallback, NULL);
 }
 
-static void pg_queue_signal(SIGNAL_ARGS) {
-    HandleNotifyInterruptMy();
-    if (notifyInterruptPending) ProcessNotifyInterruptMy();
-    pg_queue_signal_original(postgres_signal_arg);
-}
-
 EXTENSION(pg_queue_listen) {
     const char *channel = PG_ARGISNULL(0) ? "" : text_to_cstring(PG_GETARG_TEXT_PP(0));
-    if (!XactReadOnly) Async_Listen(channel); else {
-        if (!pg_queue_signal_original) pg_queue_signal_original = pqsignal(SIGUSR1, pg_queue_signal);
-        Async_Listen_My(channel);
-    }
+    !XactReadOnly ? Async_Listen(channel) : Async_Listen_My(channel);
     PG_RETURN_VOID();
 }
 
@@ -110,13 +100,7 @@ EXTENSION(pg_queue_notify) {
 }
 
 EXTENSION(pg_queue_unlisten_all) {
-    if (!XactReadOnly) Async_UnlistenAll(); else {
-        Async_UnlistenAll_My();
-        if (pg_queue_signal_original) {
-            pqsignal(SIGUSR1, pg_queue_signal_original);
-            pg_queue_signal_original = NULL;
-        }
-    }
+    !XactReadOnly ? Async_UnlistenAll() : Async_UnlistenAll_My();
     PG_RETURN_VOID();
 }
 

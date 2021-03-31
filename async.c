@@ -416,6 +416,8 @@ typedef struct NotificationHash
 
 static NotificationList *pendingNotifies = NULL;
 
+static pqsigfunc pg_queue_signal_original = NULL;
+
 /*
  * Inbound notifications are initially processed by HandleNotifyInterruptMy(),
  * called from inside a signal handler. That just sets the
@@ -470,6 +472,12 @@ static void AddEventToPendingNotifies(Notification *n);
 static uint32 notification_hash(const void *key, Size keysize);
 static int	notification_match(const void *key1, const void *key2, Size keysize);
 static void ClearPendingActionsAndNotifies(void);
+
+static void pg_queue_signal(SIGNAL_ARGS) {
+    HandleNotifyInterruptMy();
+    if (notifyInterruptPending) ProcessNotifyInterruptMy();
+    pg_queue_signal_original(postgres_signal_arg);
+}
 
 /*
  * Compute the difference between two queue page numbers (i.e., p - q),
@@ -774,6 +782,8 @@ Async_Listen_My(const char *channel)
 		elog(DEBUG1, "Async_Listen_My(%s,%d)", channel, MyProcPid);
 
 	queue_listen(LISTEN_LISTEN, channel);
+
+	if (!pg_queue_signal_original) pg_queue_signal_original = pqsignal(SIGUSR1, pg_queue_signal);
 }
 
 /*
@@ -810,6 +820,11 @@ Async_UnlistenAll_My(void)
 		return;
 
 	queue_listen(LISTEN_UNLISTEN_ALL, "");
+
+	if (pg_queue_signal_original) {
+		pqsignal(SIGUSR1, pg_queue_signal_original);
+		pg_queue_signal_original = NULL;
+	}
 }
 
 /*
