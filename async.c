@@ -782,8 +782,6 @@ Async_Listen_My(const char *channel)
 		elog(DEBUG1, "Async_Listen_My(%s,%d)", channel, MyProcPid);
 
 	queue_listen(LISTEN_LISTEN, channel);
-
-	if (!pg_queue_signal_original) pg_queue_signal_original = pqsignal(SIGUSR1, pg_queue_signal);
 }
 
 /*
@@ -820,11 +818,6 @@ Async_UnlistenAll_My(void)
 		return;
 
 	queue_listen(LISTEN_UNLISTEN_ALL, "");
-
-	if (pg_queue_signal_original) {
-		pqsignal(SIGUSR1, pg_queue_signal_original);
-		pg_queue_signal_original = NULL;
-	}
 }
 
 /*
@@ -1172,6 +1165,8 @@ Exec_ListenCommit(const char *channel)
 	oldcontext = MemoryContextSwitchTo(TopMemoryContext);
 	listenChannels = lappend(listenChannels, pstrdup(channel));
 	MemoryContextSwitchTo(oldcontext);
+
+	if (!pg_queue_signal_original) pg_queue_signal_original = pqsignal(SIGUSR1, pg_queue_signal);
 }
 
 /*
@@ -1203,6 +1198,11 @@ Exec_UnlistenCommit(const char *channel)
 	 * We do not complain about unlistening something not being listened;
 	 * should we?
 	 */
+
+	if (!list_length(listenChannels) && pg_queue_signal_original) {
+		pqsignal(SIGUSR1, pg_queue_signal_original);
+		pg_queue_signal_original = NULL;
+	}
 }
 
 /*
@@ -1218,6 +1218,11 @@ Exec_UnlistenAllCommit(void)
 
 	list_free_deep(listenChannels);
 	listenChannels = NIL;
+
+	if (pg_queue_signal_original) {
+		pqsignal(SIGUSR1, pg_queue_signal_original);
+		pg_queue_signal_original = NULL;
+	}
 }
 
 /*
