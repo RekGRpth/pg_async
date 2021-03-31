@@ -1251,8 +1251,8 @@ Exec_UnlistenAllCommit(void)
 void
 ProcessCompletedNotifiesMy(void)
 {
+	bool idle = !IsTransactionOrTransactionBlock();
 	MemoryContext caller_context;
-	bool isTransactionBlock = IsTransactionBlock();
 
 	/* Nothing to do if we didn't send any notifications */
 	if (!backendHasSentNotifications)
@@ -1278,7 +1278,7 @@ ProcessCompletedNotifiesMy(void)
 	 * We must run asyncQueueReadAllNotifications inside a transaction, else
 	 * bad things happen if it gets an error.
 	 */
-	if (isTransactionBlock)
+	if (idle)
 	StartTransactionCommand();
 
 	/* Send signals to other backends */
@@ -1299,7 +1299,7 @@ ProcessCompletedNotifiesMy(void)
 		asyncQueueAdvanceTail();
 	}
 
-	if (isTransactionBlock)
+	if (idle)
 	CommitTransactionCommand();
 
 	MemoryContextSwitchTo(caller_context);
@@ -2300,6 +2300,7 @@ static void
 ProcessIncomingNotify(void)
 {
 	/* We *must* reset the flag */
+	bool idle = !IsTransactionOrTransactionBlock();
 	notifyInterruptPending = false;
 
 	/* Do nothing else if we aren't actively listening */
@@ -2315,10 +2316,12 @@ ProcessIncomingNotify(void)
 	 * We must run asyncQueueReadAllNotifications inside a transaction, else
 	 * bad things happen if it gets an error.
 	 */
+	if (idle)
 	StartTransactionCommand();
 
 	asyncQueueReadAllNotifications();
 
+	if (idle)
 	CommitTransactionCommand();
 
 	/*
