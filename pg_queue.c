@@ -38,6 +38,7 @@ static void pg_queue_ProcessUtility_hook(PlannedStmt *pstmt, const char *querySt
 }
 
 static void pg_queue_shmem_startup_hook(void) {
+    if (pg_queue_shmem_startup_hook_original) pg_queue_shmem_startup_hook_original();
     LWLockAcquire(AddinShmemInitLock, LW_EXCLUSIVE);
     AsyncShmemInitMy();
     LWLockRelease(AddinShmemInitLock);
