@@ -14,13 +14,11 @@ static void pg_queue_shmem_startup_hook(void) {
 }
 
 void _PG_fini(void); void _PG_fini(void) {
-    if (!RecoveryInProgress()) return;
     shmem_startup_hook = pg_queue_shmem_startup_hook_original;
 }
 
 void _PG_init(void); void _PG_init(void) {
     if (!process_shared_preload_libraries_in_progress) return;
-    if (!RecoveryInProgress()) return;
     pg_queue_shmem_startup_hook_original = shmem_startup_hook;
     shmem_startup_hook = pg_queue_shmem_startup_hook;
     RequestAddinShmemSpace(AsyncShmemSizeMy());
@@ -34,17 +32,18 @@ static void pg_queue_signal(SIGNAL_ARGS) {
 
 EXTENSION(pg_queue_listen) {
     const char *channel = PG_ARGISNULL(0) ? "" : text_to_cstring(PG_GETARG_TEXT_PP(0));
-    if (!RecoveryInProgress()) E("!RecoveryInProgress");
-    if (!pg_queue_signal_original) pg_queue_signal_original = pqsignal(SIGUSR1, pg_queue_signal);
-    Async_Listen_My(channel);
-    PreCommit_Notify_My();
-    AtCommit_Notify_My();
+    if (!RecoveryInProgress()) Async_Listen(channel); else {
+        if (!pg_queue_signal_original) pg_queue_signal_original = pqsignal(SIGUSR1, pg_queue_signal);
+        Async_Listen_My(channel);
+        PreCommit_Notify_My();
+        AtCommit_Notify_My();
+    }
     PG_RETURN_VOID();
 }
 
 EXTENSION(pg_queue_listening_channels) {
     Datum datum;
-    if (!RecoveryInProgress()) E("!RecoveryInProgress");
+    if (!RecoveryInProgress()) return pg_listening_channels(fcinfo);
     datum = pg_listening_channels_my(fcinfo);
     PreCommit_Notify_My();
     AtCommit_Notify_My();
@@ -53,7 +52,7 @@ EXTENSION(pg_queue_listening_channels) {
 
 EXTENSION(pg_queue_notification_queue_usage) {
     Datum datum;
-    if (!RecoveryInProgress()) E("!RecoveryInProgress");
+    if (!RecoveryInProgress()) return pg_notification_queue_usage(fcinfo);
     datum = pg_notification_queue_usage_my(fcinfo);
     PreCommit_Notify_My();
     AtCommit_Notify_My();
@@ -61,7 +60,7 @@ EXTENSION(pg_queue_notification_queue_usage) {
 }
 
 EXTENSION(pg_queue_notify) {
-    if (!RecoveryInProgress()) E("!RecoveryInProgress");
+    if (!RecoveryInProgress()) return pg_notify(fcinfo);
     pg_notify_my(fcinfo);
     PreCommit_Notify_My();
     AtCommit_Notify_My();
@@ -70,22 +69,24 @@ EXTENSION(pg_queue_notify) {
 }
 
 EXTENSION(pg_queue_unlisten_all) {
-    if (!RecoveryInProgress()) E("!RecoveryInProgress");
-    if (pg_queue_signal_original) {
-        pqsignal(SIGUSR1, pg_queue_signal_original);
-        pg_queue_signal_original = NULL;
+    if (!RecoveryInProgress()) Async_UnlistenAll(); else {
+        Async_UnlistenAll_My();
+        PreCommit_Notify_My();
+        AtCommit_Notify_My();
+        if (pg_queue_signal_original) {
+            pqsignal(SIGUSR1, pg_queue_signal_original);
+            pg_queue_signal_original = NULL;
+        }
     }
-    Async_UnlistenAll_My();
-    PreCommit_Notify_My();
-    AtCommit_Notify_My();
     PG_RETURN_VOID();
 }
 
 EXTENSION(pg_queue_unlisten) {
     const char *channel = PG_ARGISNULL(0) ? "" : text_to_cstring(PG_GETARG_TEXT_PP(0));
-    if (!RecoveryInProgress()) E("!RecoveryInProgress");
-    Async_Unlisten_My(channel);
-    PreCommit_Notify_My();
-    AtCommit_Notify_My();
+    if (!RecoveryInProgress()) Async_Unlisten(channel); else {
+        Async_Unlisten_My(channel);
+        PreCommit_Notify_My();
+        AtCommit_Notify_My();
+    }
     PG_RETURN_VOID();
 }
