@@ -3,55 +3,12 @@
 
 #include <postgres.h>
 
-#include <access/parallel.h>
-//#include <access/printtup.h>
 #include <access/xact.h>
-//#include <catalog/heap.h>
-//#include <catalog/namespace.h>
-//#include <catalog/pg_type.h>
 #include <commands/async.h>
-//#include <commands/dbcommands.h>
-#include <commands/extension.h>
-#include <commands/prepare.h>
-//#include <commands/user.h>
-#include <common/hashfn.h>
-#include <common/ip.h>
-#include <executor/spi.h>
-#include <fe_utils/recovery_gen.h>
-//#include <fe_utils/string_utils.h>
-#include <funcapi.h>
-//#include <jit/jit.h>
-#include <libpq-fe.h>
-#include <libpq/libpq-be.h>
-#include <libpq/pqformat.h>
-#include <libpq/libpq.h>
-#include <libpq/pqformat.h>
-//#include <miscadmin.h>
-//#include <nodes/makefuncs.h>
-//#include <parser/analyze.h>
-#include <parser/parse_func.h>
-#include <parser/parse_type.h>
 #include <pgstat.h>
-//#include <postgresql/internal/pqexpbuffer.h>
-#include <postmaster/bgworker.h>
-#include <postmaster/interrupt.h>
-#include <replication/slot.h>
-#include <replication/syncrep.h>
-//#include <replication/syncrep.h>
-#include <replication/walreceiver.h>
-#include <replication/walsender_private.h>
 #include <storage/ipc.h>
-#include <sys/utsname.h>
-//#include <tcop/pquery.h>
 #include <tcop/utility.h>
-//#include <utils/acl.h>
 #include <utils/builtins.h>
-#include <utils/lsyscache.h>
-//#include <utils/ps_status.h>
-#include <utils/regproc.h>
-//#include <utils/snapmgr.h>
-#include <utils/timeout.h>
-//#include <utils/typcache.h>
 
 #define FORMAT_0(fmt, ...) "%s(%s:%d): %s", __func__, __FILE__, __LINE__, fmt
 #define FORMAT_1(fmt, ...) "%s(%s:%d): " fmt,  __func__, __FILE__, __LINE__
@@ -86,8 +43,6 @@
 #define W(fmt, ...) ereport(WARNING, (errmsg(GET_FORMAT(fmt, ##__VA_ARGS__), ##__VA_ARGS__)))
 
 #define countof(array) (sizeof(array)/sizeof(array[0]))
-
-#define NUM_NOTIFY_BUFFERS	8
 
 extern Size AsyncShmemSizeMy(void);
 extern void AsyncShmemInitMy(void);
