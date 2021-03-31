@@ -2312,11 +2312,11 @@ ProcessIncomingNotify(void)
 	 * We must run asyncQueueReadAllNotifications inside a transaction, else
 	 * bad things happen if it gets an error.
 	 */
-//	StartTransactionCommand();
+	StartTransactionCommand();
 
 	asyncQueueReadAllNotifications();
 
-//	CommitTransactionCommand();
+	CommitTransactionCommand();
 
 	/*
 	 * Must flush the notify messages to ensure frontend gets them promptly.
