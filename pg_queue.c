@@ -44,9 +44,23 @@ static void pg_queue_shmem_startup_hook(void) {
     LWLockRelease(AddinShmemInitLock);
 }
 
+static void pg_queue_XactCallback(XactEvent event, void *arg) {
+    if (!XactReadOnly) return;
+    PreCommit_Notify_My();
+    AtCommit_Notify_My();
+    ProcessCompletedNotifiesMy();
+}
+
+static void pg_queue_SubXactCallback(SubXactEvent event, SubTransactionId mySubid, SubTransactionId parentSubid, void *arg) {
+    if (XactReadOnly) return;
+    AtSubCommit_Notify_My();
+}
+
 void _PG_fini(void); void _PG_fini(void) {
     ProcessUtility_hook = pg_queue_ProcessUtility_hook_original;
     shmem_startup_hook = pg_queue_shmem_startup_hook_original;
+    UnregisterSubXactCallback(pg_queue_SubXactCallback, NULL);
+    UnregisterXactCallback(pg_queue_XactCallback, NULL);
 }
 
 void _PG_init(void); void _PG_init(void) {
@@ -56,6 +70,8 @@ void _PG_init(void); void _PG_init(void) {
     pg_queue_shmem_startup_hook_original = shmem_startup_hook;
     shmem_startup_hook = pg_queue_shmem_startup_hook;
     RequestAddinShmemSpace(AsyncShmemSizeMy());
+    RegisterSubXactCallback(pg_queue_SubXactCallback, NULL);
+    RegisterXactCallback(pg_queue_XactCallback, NULL);
 }
 
 static void pg_queue_signal(SIGNAL_ARGS) {
@@ -69,44 +85,25 @@ EXTENSION(pg_queue_listen) {
     if (!XactReadOnly) Async_Listen(channel); else {
         if (!pg_queue_signal_original) pg_queue_signal_original = pqsignal(SIGUSR1, pg_queue_signal);
         Async_Listen_My(channel);
-        PreCommit_Notify_My();
-        AtCommit_Notify_My();
     }
     PG_RETURN_VOID();
 }
 
 EXTENSION(pg_queue_listening_channels) {
-    Datum datum;
-    if (!XactReadOnly) return pg_listening_channels(fcinfo);
-    datum = pg_listening_channels_my(fcinfo);
-    PreCommit_Notify_My();
-    AtCommit_Notify_My();
-    return datum;
+    return !XactReadOnly ? pg_listening_channels(fcinfo) : pg_listening_channels_my(fcinfo);
 }
 
 EXTENSION(pg_queue_notification_queue_usage) {
-    Datum datum;
-    if (!XactReadOnly) return pg_notification_queue_usage(fcinfo);
-    datum = pg_notification_queue_usage_my(fcinfo);
-    PreCommit_Notify_My();
-    AtCommit_Notify_My();
-    return datum;
+    return !XactReadOnly ? pg_notification_queue_usage(fcinfo) : pg_notification_queue_usage_my(fcinfo);
 }
 
 EXTENSION(pg_queue_notify) {
-    if (!XactReadOnly) return pg_notify(fcinfo);
-    pg_notify_my(fcinfo);
-    PreCommit_Notify_My();
-    AtCommit_Notify_My();
-    ProcessCompletedNotifiesMy();
-    PG_RETURN_VOID();
+    return !XactReadOnly ? pg_notify(fcinfo) : pg_notify_my(fcinfo);
 }
 
 EXTENSION(pg_queue_unlisten_all) {
     if (!XactReadOnly) Async_UnlistenAll(); else {
         Async_UnlistenAll_My();
-        PreCommit_Notify_My();
-        AtCommit_Notify_My();
         if (pg_queue_signal_original) {
             pqsignal(SIGUSR1, pg_queue_signal_original);
             pg_queue_signal_original = NULL;
@@ -117,10 +114,6 @@ EXTENSION(pg_queue_unlisten_all) {
 
 EXTENSION(pg_queue_unlisten) {
     const char *channel = PG_ARGISNULL(0) ? "" : text_to_cstring(PG_GETARG_TEXT_PP(0));
-    if (!XactReadOnly) Async_Unlisten(channel); else {
-        Async_Unlisten_My(channel);
-        PreCommit_Notify_My();
-        AtCommit_Notify_My();
-    }
+    !XactReadOnly ? Async_Unlisten(channel) : Async_Unlisten_My(channel);
     PG_RETURN_VOID();
 }
