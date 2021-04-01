@@ -1,4 +1,4 @@
 default_version = '1.0'
-module_pathname = '$libdir/pg_queue'
+module_pathname = '$libdir/pg_async'
 relocatable = true
 comment = 'PostgreSQL queue'

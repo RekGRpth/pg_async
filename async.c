@@ -416,7 +416,7 @@ typedef struct NotificationHash
 
 static NotificationList *pendingNotifies = NULL;
 
-static pqsigfunc pg_queue_signal_original = NULL;
+static pqsigfunc pg_async_signal_original = NULL;
 
 /*
  * Inbound notifications are initially processed by HandleNotifyInterruptMy(),
@@ -473,10 +473,10 @@ static uint32 notification_hash(const void *key, Size keysize);
 static int	notification_match(const void *key1, const void *key2, Size keysize);
 static void ClearPendingActionsAndNotifies(void);
 
-static void pg_queue_signal(SIGNAL_ARGS) {
+static void pg_async_signal(SIGNAL_ARGS) {
     HandleNotifyInterruptMy();
     if (notifyInterruptPending) ProcessNotifyInterruptMy();
-    pg_queue_signal_original(postgres_signal_arg);
+    pg_async_signal_original(postgres_signal_arg);
 }
 
 /*
@@ -1166,7 +1166,7 @@ Exec_ListenCommit(const char *channel)
 	listenChannels = lappend(listenChannels, pstrdup(channel));
 	MemoryContextSwitchTo(oldcontext);
 
-	if (!pg_queue_signal_original) pg_queue_signal_original = pqsignal(SIGUSR1, pg_queue_signal);
+	if (!pg_async_signal_original) pg_async_signal_original = pqsignal(SIGUSR1, pg_async_signal);
 }
 
 /*
@@ -1199,9 +1199,9 @@ Exec_UnlistenCommit(const char *channel)
 	 * should we?
 	 */
 
-	if (!list_length(listenChannels) && pg_queue_signal_original) {
-		pqsignal(SIGUSR1, pg_queue_signal_original);
-		pg_queue_signal_original = NULL;
+	if (!list_length(listenChannels) && pg_async_signal_original) {
+		pqsignal(SIGUSR1, pg_async_signal_original);
+		pg_async_signal_original = NULL;
 	}
 }
 
@@ -1219,9 +1219,9 @@ Exec_UnlistenAllCommit(void)
 	list_free_deep(listenChannels);
 	listenChannels = NIL;
 
-	if (pg_queue_signal_original) {
-		pqsignal(SIGUSR1, pg_queue_signal_original);
-		pg_queue_signal_original = NULL;
+	if (pg_async_signal_original) {
+		pqsignal(SIGUSR1, pg_async_signal_original);
+		pg_async_signal_original = NULL;
 	}
 }
 
