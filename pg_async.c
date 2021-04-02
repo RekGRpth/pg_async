@@ -13,7 +13,7 @@ static void CheckRestrictedOperation(const char *cmdname) {
 
 static void pg_async_ProcessUtility_hook(PlannedStmt *pstmt, const char *queryString, ProcessUtilityContext context, ParamListInfo params, QueryEnvironment *queryEnv, DestReceiver *dest, QueryCompletion *qc) {
     Node *parsetree = pstmt->utilityStmt;
-    if (!XactReadOnly) return pg_async_ProcessUtility_hook_original ? pg_async_ProcessUtility_hook_original(pstmt, queryString, context, params, queryEnv, dest, qc) : standard_ProcessUtility(pstmt, queryString, context, params, queryEnv, dest, qc);
+    if (!TransactionStartedDuringRecovery()) return pg_async_ProcessUtility_hook_original ? pg_async_ProcessUtility_hook_original(pstmt, queryString, context, params, queryEnv, dest, qc) : standard_ProcessUtility(pstmt, queryString, context, params, queryEnv, dest, qc);
     check_stack_depth();
     switch (nodeTag(parsetree)) {
         case T_ListenStmt: {
@@ -43,7 +43,7 @@ static void pg_async_shmem_startup_hook(void) {
 }
 
 static void pg_async_XactCallback(XactEvent event, void *arg) {
-    if (!XactReadOnly) return;
+    if (!TransactionStartedDuringRecovery()) return;
     switch (event) {
         case XACT_EVENT_ABORT: AtAbort_Notify_My(); break;
         case XACT_EVENT_COMMIT: AtCommit_Notify_My(); ProcessCompletedNotifiesMy(); break;
@@ -54,7 +54,7 @@ static void pg_async_XactCallback(XactEvent event, void *arg) {
 }
 
 static void pg_async_SubXactCallback(SubXactEvent event, SubTransactionId mySubid, SubTransactionId parentSubid, void *arg) {
-    if (XactReadOnly) return;
+    if (!TransactionStartedDuringRecovery()) return;
     switch (event) {
         case SUBXACT_EVENT_ABORT_SUB: AtSubAbort_Notify_My(); break;
         case SUBXACT_EVENT_PRE_COMMIT_SUB: AtSubCommit_Notify_My(); break;
@@ -82,29 +82,29 @@ void _PG_init(void); void _PG_init(void) {
 
 EXTENSION(pg_async_listen) {
     const char *channel = PG_ARGISNULL(0) ? "" : text_to_cstring(PG_GETARG_TEXT_PP(0));
-    !XactReadOnly ? Async_Listen(channel) : Async_Listen_My(channel);
+    !TransactionStartedDuringRecovery() ? Async_Listen(channel) : Async_Listen_My(channel);
     PG_RETURN_VOID();
 }
 
 EXTENSION(pg_async_listening_channels) {
-    return !XactReadOnly ? pg_listening_channels(fcinfo) : pg_listening_channels_my(fcinfo);
+    return !TransactionStartedDuringRecovery() ? pg_listening_channels(fcinfo) : pg_listening_channels_my(fcinfo);
 }
 
 EXTENSION(pg_async_notification_queue_usage) {
-    return !XactReadOnly ? pg_notification_queue_usage(fcinfo) : pg_notification_queue_usage_my(fcinfo);
+    return !TransactionStartedDuringRecovery() ? pg_notification_queue_usage(fcinfo) : pg_notification_queue_usage_my(fcinfo);
 }
 
 EXTENSION(pg_async_notify) {
-    return !XactReadOnly ? pg_notify(fcinfo) : pg_notify_my(fcinfo);
+    return !TransactionStartedDuringRecovery() ? pg_notify(fcinfo) : pg_notify_my(fcinfo);
 }
 
 EXTENSION(pg_async_unlisten_all) {
-    !XactReadOnly ? Async_UnlistenAll() : Async_UnlistenAll_My();
+    !TransactionStartedDuringRecovery() ? Async_UnlistenAll() : Async_UnlistenAll_My();
     PG_RETURN_VOID();
 }
 
 EXTENSION(pg_async_unlisten) {
     const char *channel = PG_ARGISNULL(0) ? "" : text_to_cstring(PG_GETARG_TEXT_PP(0));
-    !XactReadOnly ? Async_Unlisten(channel) : Async_Unlisten_My(channel);
+    !TransactionStartedDuringRecovery() ? Async_Unlisten(channel) : Async_Unlisten_My(channel);
     PG_RETURN_VOID();
 }
