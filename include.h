@@ -1,15 +1,6 @@
 #ifndef _INCLUDE_H_
 #define _INCLUDE_H_
 
-#include <postgres.h>
-
-#include <access/xact.h>
-#include <commands/async.h>
-#include <pgstat.h>
-#include <storage/ipc.h>
-#include <tcop/utility.h>
-#include <utils/builtins.h>
-
 #define FORMAT_0(fmt, ...) "%s(%s:%d): %s", __func__, __FILE__, __LINE__, fmt
 #define FORMAT_1(fmt, ...) "%s(%s:%d): " fmt,  __func__, __FILE__, __LINE__
 #define GET_FORMAT(fmt, ...) GET_FORMAT_PRIVATE(fmt, 0, ##__VA_ARGS__, 1, \
@@ -43,6 +34,15 @@
 #define W(fmt, ...) ereport(WARNING, (errmsg(GET_FORMAT(fmt, ##__VA_ARGS__), ##__VA_ARGS__)))
 
 #define countof(array) (sizeof(array)/sizeof(array[0]))
+
+#include <postgres.h>
+
+#include <access/xact.h>
+#include <commands/async.h>
+#include <pgstat.h>
+#include <storage/ipc.h>
+#include <tcop/utility.h>
+#include <utils/builtins.h>
 
 extern Size AsyncShmemSizeMy(void);
 extern void AsyncShmemInitMy(void);
