@@ -2024,7 +2024,7 @@ asyncQueueReadAllNotifications(void)
 	 * before we see them.
 	 *----------
 	 */
-//	snapshot = RegisterSnapshot(GetLatestSnapshot());
+	snapshot = NULL; //RegisterSnapshot(GetLatestSnapshot());
 
 	/*
 	 * It is possible that we fail while trying to send a message to our
