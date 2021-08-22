@@ -575,10 +575,16 @@ AsyncShmemInitMy(void)
 	 * Set up SLRU management of the pg_notify data.
 	 */
 	NotifyCtl->PagePrecedes = asyncQueuePagePrecedes;
+#if (PG_VERSION_NUM >= 140000)
+	SimpleLruInit(NotifyCtl, "Notify", NUM_NOTIFY_BUFFERS, 0,
+				  NotifySLRULock, "pg_notify", LWTRANCHE_NOTIFY_BUFFER,
+				  SYNC_HANDLER_NONE);
+#else
 	SimpleLruInit(NotifyCtl, "Notify", NUM_NOTIFY_BUFFERS, 0,
 				  NotifySLRULock, "pg_notify", LWTRANCHE_NOTIFY_BUFFER);
 	/* Override default assumption that writes should be fsync'd */
 	NotifyCtl->do_fsync = false;
+#endif
 
 	if (!found)
 	{
@@ -1960,7 +1966,10 @@ static void
 asyncQueueReadAllNotifications(void)
 {
 	volatile QueuePosition pos;
+#if (PG_VERSION_NUM >= 140000)
+#else
 	QueuePosition oldpos;
+#endif
 	QueuePosition head;
 	Snapshot	snapshot;
 
@@ -1975,7 +1984,11 @@ asyncQueueReadAllNotifications(void)
 	LWLockAcquire(NotifyQueueLock, LW_SHARED);
 	/* Assert checks that we have a valid state entry */
 	Assert(MyProcPid == QUEUE_BACKEND_PID(MyBackendId));
+#if (PG_VERSION_NUM >= 140000)
+	pos = QUEUE_BACKEND_POS(MyBackendId);
+#else
 	pos = oldpos = QUEUE_BACKEND_POS(MyBackendId);
+#endif
 	head = QUEUE_HEAD;
 	LWLockRelease(NotifyQueueLock);
 
@@ -2348,8 +2361,12 @@ NotifyMyFrontEndMy(const char *channel, const char *payload, int32 srcPid)
 		pq_beginmessage(&buf, 'A');
 		pq_sendint32(&buf, srcPid);
 		pq_sendstring(&buf, channel);
+#if (PG_VERSION_NUM >= 140000)
+		pq_sendstring(&buf, payload);
+#else
 		if (PG_PROTOCOL_MAJOR(FrontendProtocol) >= 3)
 			pq_sendstring(&buf, payload);
+#endif
 		pq_endmessage(&buf);
 
 		/*
@@ -2417,7 +2434,10 @@ AddEventToPendingNotifies(Notification *n)
 		ListCell   *l;
 
 		/* Create the hash table */
+#if (PG_VERSION_NUM >= 140000)
+#else
 		MemSet(&hash_ctl, 0, sizeof(hash_ctl));
+#endif
 		hash_ctl.keysize = sizeof(Notification *);
 		hash_ctl.entrysize = sizeof(NotificationHash);
 		hash_ctl.hash = notification_hash;

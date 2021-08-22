@@ -41,6 +41,10 @@
 #include <commands/async.h>
 #include <pgstat.h>
 #include <storage/ipc.h>
+#if (PG_VERSION_NUM >= 140000)
+#include <storage/lwlock.h>
+#include <storage/shmem.h>
+#endif
 #include <tcop/utility.h>
 #include <utils/builtins.h>
 
