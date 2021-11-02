@@ -39,9 +39,10 @@
 
 #include <access/xact.h>
 #include <commands/async.h>
+#include <miscadmin.h>
 #include <pgstat.h>
 #include <storage/ipc.h>
-#if (PG_VERSION_NUM >= 140000)
+#if PG_VERSION_NUM >= 140000
 #include <storage/lwlock.h>
 #include <storage/shmem.h>
 #endif
@@ -63,7 +64,7 @@ extern void AtSubAbort_Notify_My(void);
 extern void AtPrepare_Notify_My(void);
 extern void ProcessCompletedNotifiesMy(void);
 extern void HandleNotifyInterruptMy(void);
-extern void ProcessNotifyInterruptMy(void);
+extern void ProcessNotifyInterruptMy(bool flush);
 extern Datum pg_listening_channels_my(PG_FUNCTION_ARGS);
 extern Datum pg_notify_my(PG_FUNCTION_ARGS);
 extern Datum pg_notification_queue_usage_my(PG_FUNCTION_ARGS);

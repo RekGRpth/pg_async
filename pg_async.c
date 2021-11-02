@@ -11,13 +11,13 @@ static void CheckRestrictedOperation(const char *cmdname) {
     if (InSecurityRestrictedOperation()) ereport(ERROR, (errcode(ERRCODE_INSUFFICIENT_PRIVILEGE), errmsg("cannot execute %s within security-restricted operation", cmdname)));
 }
 
-#if (PG_VERSION_NUM >= 140000)
+#if PG_VERSION_NUM >= 140000
 static void pg_async_ProcessUtility_hook(PlannedStmt *pstmt, const char *queryString, bool readOnlyTree, ProcessUtilityContext context, ParamListInfo params, QueryEnvironment *queryEnv, DestReceiver *dest, QueryCompletion *qc) {
 #else
 static void pg_async_ProcessUtility_hook(PlannedStmt *pstmt, const char *queryString, ProcessUtilityContext context, ParamListInfo params, QueryEnvironment *queryEnv, DestReceiver *dest, QueryCompletion *qc) {
 #endif
     Node *parsetree = pstmt->utilityStmt;
-#if (PG_VERSION_NUM >= 140000)
+#if PG_VERSION_NUM >= 140000
     if (!TransactionStartedDuringRecovery()) return pg_async_ProcessUtility_hook_original ? pg_async_ProcessUtility_hook_original(pstmt, queryString, readOnlyTree, context, params, queryEnv, dest, qc) : standard_ProcessUtility(pstmt, queryString, readOnlyTree, context, params, queryEnv, dest, qc);
 #else
     if (!TransactionStartedDuringRecovery()) return pg_async_ProcessUtility_hook_original ? pg_async_ProcessUtility_hook_original(pstmt, queryString, context, params, queryEnv, dest, qc) : standard_ProcessUtility(pstmt, queryString, context, params, queryEnv, dest, qc);
@@ -38,7 +38,7 @@ static void pg_async_ProcessUtility_hook(PlannedStmt *pstmt, const char *querySt
             CheckRestrictedOperation("UNLISTEN");
             stmt->conditionname ? Async_Unlisten_My(stmt->conditionname) : Async_UnlistenAll_My();
         } break;
-#if (PG_VERSION_NUM >= 140000)
+#if PG_VERSION_NUM >= 140000
         default: return pg_async_ProcessUtility_hook_original ? pg_async_ProcessUtility_hook_original(pstmt, queryString, readOnlyTree, context, params, queryEnv, dest, qc) : standard_ProcessUtility(pstmt, queryString, readOnlyTree, context, params, queryEnv, dest, qc);
 #else
         default: return pg_async_ProcessUtility_hook_original ? pg_async_ProcessUtility_hook_original(pstmt, queryString, context, params, queryEnv, dest, qc) : standard_ProcessUtility(pstmt, queryString, context, params, queryEnv, dest, qc);
