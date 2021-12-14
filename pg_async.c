@@ -82,7 +82,7 @@ void _PG_fini(void); void _PG_fini(void) {
 }
 
 void _PG_init(void); void _PG_init(void) {
-    if (!process_shared_preload_libraries_in_progress) elog(ERROR, "This module can only be loaded via shared_preload_libraries");
+    if (!process_shared_preload_libraries_in_progress) ereport(ERROR, (errcode(ERRCODE_INTERNAL_ERROR), errmsg("This module can only be loaded via shared_preload_libraries")));
     pg_async_ProcessUtility_hook_original = ProcessUtility_hook;
     ProcessUtility_hook = pg_async_ProcessUtility_hook;
     pg_async_shmem_startup_hook_original = shmem_startup_hook;
